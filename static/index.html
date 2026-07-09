@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Studio — Language Distillation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-sunken: #fafbfc;
+    --border: #e4e7ec;
+    --border-strong: #d0d5dd;
+    --text: #101828;
+    --text-muted: #667085;
+    --text-faint: #98a2b3;
+
+    --accent: #2f5eff;
+    --accent-hover: #1d49e6;
+    --accent-soft: #eaf1ff;
+    --accent-soft-border: #c2d6ff;
+
+    --pill-gray-bg: #f2f4f7;
+    --pill-gray-text: #475467;
+
+    --pill-orange-bg: #fef3e8;
+    --pill-orange-text: #b54708;
+    --pill-orange-border: #fddcab;
+
+    --pill-purple-bg: #f4f3ff;
+    --pill-purple-text: #6941c6;
+    --pill-purple-border: #d9d6fe;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+
+    --shadow-card: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.04);
+    --shadow-pop: 0 4px 12px rgba(16,24,40,0.10), 0 2px 4px rgba(16,24,40,0.06);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0b0d12;
+    --surface: #12151b;
+    --surface-sunken: #171a21;
+    --border: #262b35;
+    --border-strong: #343b48;
+    --text: #edeff2;
+    --text-muted: #9096a3;
+    --text-faint: #666d7b;
+
+    --accent: #4d7bff;
+    --accent-hover: #6690ff;
+    --accent-soft: #182238;
+    --accent-soft-border: #2c4a78;
+
+    --pill-gray-bg: #1c1f27;
+    --pill-gray-text: #9096a3;
+
+    --pill-orange-bg: #2e2211;
+    --pill-orange-text: #f0a961;
+    --pill-orange-border: #4a350f;
+
+    --pill-purple-bg: #201c33;
+    --pill-purple-text: #b9a3f5;
+    --pill-purple-border: #372f57;
+
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+    --shadow-pop: 0 4px 16px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ---------- Header ---------- */
+  .app-shell {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 28px 40px;
+  }
+
+  header.top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 18px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .brand-mark svg { display: block; }
+
+  .brand-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+
+  .pill-gray { background: var(--pill-gray-bg); color: var(--pill-gray-text); }
+  .pill-orange { background: var(--pill-orange-bg); color: var(--pill-orange-text); border-color: var(--pill-orange-border); }
+  .pill-purple { background: var(--pill-purple-bg); color: var(--pill-purple-text); border-color: var(--pill-purple-border); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Model segmented control */
+  .model-select {
+    display: flex;
+    background: var(--pill-gray-bg);
+    border-radius: 8px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .model-option {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+  }
+
+  .model-option.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-card);
+  }
+
+  .model-option .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .model-option.active .dot { background: var(--accent); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.12s ease;
+  }
+
+  .btn:hover { background: var(--surface-sunken); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+  .btn-ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 8px 10px;
+  }
+
+  .btn-ghost:hover { background: var(--pill-gray-bg); color: var(--text); }
+
+  /* ---------- Mode tabs ---------- */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    text-align: left;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+
+  .mode-tab:hover { border-color: var(--border-strong); }
+
+  .mode-tab.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .mode-tab-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+  }
+
+  .mode-tab-desc {
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .mode-radio {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 2px solid var(--border-strong);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .mode-tab.active .mode-radio {
+    border-color: var(--accent);
+  }
+
+  .mode-tab.active .mode-radio::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
+
+  .lang-dropdown-wrap { position: relative; }
+
+  .lang-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 200px;
+  }
+
+  .lang-trigger .count-badge {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--accent-soft-border);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 100px;
+  }
+
+  .lang-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 300px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    padding: 10px;
+    z-index: 40;
+    display: none;
+  }
+
+  .lang-panel.open { display: block; }
+
+  .lang-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 4px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .lang-panel-head span { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .lang-panel-head a { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 500; }
+
+  .lang-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 6px;
+    border-radius: 7px;
+    cursor: pointer;
+  }
+
+  .lang-option:hover { background: var(--surface-sunken); }
+
+  .glyph-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1.5px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .lang-option.checked .glyph-badge {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .lang-option-label { font-size: 13px; font-weight: 500; flex: 1; }
+  .lang-option-code { font-size: 11px; color: var(--text-faint); }
+
+  .checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-strong);
+    flex-shrink: 0;
+  }
+
+  .lang-option.checked .checkbox {
+    background: var(--accent);
+    border-color: var(--accent);
+    position: relative;
+  }
+
+  .lang-option.checked .checkbox::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .toolbar-spacer { flex: 1; }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .status-pill.generating .status-dot { background: #f79009; animation: pulse 1s infinite; }
+  .status-pill.done .status-dot { background: #12b76a; }
+  .status-pill.error .status-dot { background: #f04438; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* ---------- Workspace ---------- */
+  .workspace {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .workspace { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    min-height: 560px;
+    height: 640px;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-sunken);
+  }
+
+  .panel-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .char-count { font-size: 11.5px; color: var(--text-faint); font-weight: 400; text-transform: none; letter-spacing: normal; }
+
+  .panel-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+  textarea.input-area {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text);
+    background: transparent;
+  }
+
+  textarea.input-area::placeholder { color: var(--text-faint); }
+
+  .output-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .output-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-bottom: none;
+    white-space: nowrap;
+  }
+
+  .output-tab.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: var(--border);
+  }
+
+  .output-tab .mini-glyph {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    background: var(--pill-gray-bg);
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .output-tab.active .mini-glyph { background: var(--accent); color: #fff; }
+
+  .warn-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #f79009;
+    flex-shrink: 0;
+  }
+
+  .warning-banner {
+    margin: 12px 16px 0;
+    padding: 10px 12px;
+    background: var(--pill-orange-bg);
+    border: 1px solid var(--pill-orange-border);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--pill-orange-text);
+  }
+
+  .warning-banner ul { margin: 6px 0 0; padding-left: 18px; }
+  .warning-banner li { margin-bottom: 3px; }
+
+  .output-content {
+    flex: 1;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    color: var(--text);
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text-faint);
+    padding: 40px;
+    text-align: center;
+  }
+
+  .empty-state svg { opacity: 0.5; }
+  .empty-state p { font-size: 13px; margin: 0; max-width: 260px; }
+
+  .panel-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-muted);
+  }
+  .icon-btn:hover { background: var(--pill-gray-bg); color: var(--text); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--text);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-pop);
+    z-index: 100;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M2 4H7V12H2V4Z" fill="white" fill-opacity="0.9"/>
+          <path d="M9 4H14V12H9V4Z" fill="white" fill-opacity="0.55"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-title">Prompt Studio</div>
+      </div>
+      <span class="pill pill-gray">Draft</span>
+    </div>
+
+    <div class="header-right">
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode" style="width:34px;height:34px;">
+        <svg id="themeIconSun" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.2V2.6M8 13.4V14.8M2.6 8H1.2M14.8 8H13.4M3.5 3.5L4.5 4.5M11.5 11.5L12.5 12.5M12.5 3.5L11.5 4.5M4.5 11.5L3.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:none;"><path d="M13.5 9.5A5.8 5.8 0 016.5 2.5a5.8 5.8 0 107 7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="model-select" id="modelSelect">
+        <!-- populated by JS -->
+      </div>
+      <button class="btn btn-primary" id="generateBtn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 5.5L13 7L8.5 8.5L7 13L5.5 8.5L1 7L5.5 5.5L7 1Z" fill="currentColor"/></svg>
+        Generate
+      </button>
+    </div>
+  </header>
+
+  <!-- Mode tabs -->
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="extract">
+      <div class="mode-tab-title"><span class="mode-radio"></span>Distill from raw prompt</div>
+      <div class="mode-tab-desc">Separates business logic from language-specific rules, then generates prompts for the languages you pick.</div>
+    </div>
+    <div class="mode-tab" data-mode="scoped">
+      <div class="mode-tab-title"><span class="mode-radio"></span>Scope a clean prompt</div>
+      <div class="mode-tab-desc">Business logic is already clean, generates language prompts scoped only to what's relevant.</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="lang-dropdown-wrap">
+      <div class="lang-trigger" id="langTrigger">
+        <span id="langTriggerLabel">Select languages</span>
+        <span class="count-badge" id="langCount">3</span>
+      </div>
+      <div class="lang-panel" id="langPanel">
+        <div class="lang-panel-head">
+          <span>Languages</span>
+          <a id="langClear">Clear</a>
+        </div>
+        <div id="langList"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" id="loadSampleBtn">Load sample</button>
+    <button class="btn btn-ghost" id="uploadBtn">Upload file</button>
+    <input type="file" id="fileInput" accept=".txt,.md">
+    <button class="btn btn-ghost" id="downloadBtn">Download result</button>
+    <button class="btn btn-ghost" id="resetBtn">Reset</button>
+
+    <div class="toolbar-spacer"></div>
+    <div class="status-pill" id="statusPill"><span class="status-dot"></span><span id="statusText">Idle</span></div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="workspace">
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Agent Input <span class="char-count" id="inputCharCount">0 chars</span></div>
+      </div>
+      <div class="panel-body">
+        <textarea class="input-area" id="inputArea" placeholder="Paste the raw agent system prompt here (or a clean business-logic prompt, depending on the mode selected above)..."></textarea>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Output</div>
+        <div class="panel-actions">
+          <button class="btn btn-ghost" id="reviewBtn" title="Ask AI to review this output" style="padding:6px 10px;font-size:12px;">
+            🔍 Review
+          </button>
+          <button class="btn btn-ghost" id="editBtn" title="Edit manually" style="padding:6px 10px;font-size:12px;">
+            ✏️ Edit
+          </button>
+          <button class="icon-btn" id="copyBtn" title="Copy">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 9.5V2.5C2.5 2 2.9 1.5 3.5 1.5H9.5" stroke="currentColor" stroke-width="1.3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="output-tabs" id="outputTabs" style="display:none;"></div>
+      <div class="panel-body" id="outputBody">
+        <div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M8 8H32V32H8V8Z" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/><path d="M20 15V25M15 20H25" stroke="currentColor" stroke-width="2"/></svg>
+          <p>Business logic and per-language prompts will appear here once you generate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Config ----------
+const LANGUAGES = [
+  { code: "HI", name: "Hindi", glyph: "हि" },
+  { code: "EN", name: "English", glyph: "En" },
+  { code: "KN", name: "Kannada", glyph: "ಕ" },
+  { code: "TA", name: "Tamil", glyph: "த" },
+  { code: "ML", name: "Malayalam", glyph: "മ" },
+  { code: "GU", name: "Gujarati", glyph: "ગુ" },
+  { code: "MR", name: "Marathi", glyph: "म" },
+  { code: "TE", name: "Telugu", glyph: "తె" },
+];
+
+let selectedLanguages = new Set(JSON.parse(localStorage.getItem("promptStudioLangs") || "[]"));
+let currentMode = "extract";
+let currentModel = null;
+let lastResult = null;
+let activeOutputTab = "business_logic";
+let isEditing = false;
+let reviewCache = {}; 
+
+const SAMPLE_PROMPT = `You are Sona, a sales representative from Muthoot Finance Gold Loan team.
+Refer to yourself only in feminine Hindi verb forms (for example मैं बोल रही हूँ).
+Use only branch location list results as the source of truth for branch identification.
+If you are not able to capture correct pin code after asking twice, then go to PIN code not captured flow.
+Speak all money amounts as natural spoken Hindi words, never one digit at a time.
+## Node 1 – Greeting
+Ask the customer if they have a couple of minutes to speak.
+## Node 2 – Loan Requirement
+Ask how much loan amount they are looking for.`;
+
+// ---------- Elements ----------
+const el = (id) => document.getElementById(id);
+const modelSelectEl = el("modelSelect");
+const inputArea = el("inputArea");
+const inputCharCount = el("inputCharCount");
+const generateBtn = el("generateBtn");
+const statusPill = el("statusPill");
+const statusText = el("statusText");
+const langTrigger = el("langTrigger");
+const langPanel = el("langPanel");
+const langList = el("langList");
+const langCount = el("langCount");
+const langTriggerLabel = el("langTriggerLabel");
+const outputTabs = el("outputTabs");
+const outputBody = el("outputBody");
+const toast = el("toast");
+
+// ---------- Theme ----------
+function initTheme() {
+  const saved = localStorage.getItem("promptStudioTheme");
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = saved || (prefersDark ? "dark" : "light");
+  applyTheme(theme);
+
+  el("themeToggle").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    applyTheme(current === "dark" ? "light" : "dark");
+  });
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("promptStudioTheme", theme);
+  el("themeIconSun").style.display = theme === "dark" ? "none" : "block";
+  el("themeIconMoon").style.display = theme === "dark" ? "block" : "none";
+}
+
+// ---------- Init ----------
+async function init() {
+  initTheme();
+  renderLangList();
+  updateLangTrigger();
+  await loadModels();
+  bindEvents();
+}
+
+async function loadModels() {
+  try {
+    const res = await fetch("/api/models");
+    const data = await res.json();
+    currentModel = data.default;
+    modelSelectEl.innerHTML = data.models.map(m => `
+      <button class="model-option ${m.id === currentModel ? 'active' : ''}" data-model="${m.id}">
+        <span class="dot"></span>${m.label}
+      </button>
+    `).join("");
+    modelSelectEl.querySelectorAll(".model-option").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentModel = btn.dataset.model;
+        modelSelectEl.querySelectorAll(".model-option").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+  } catch (e) {
+    modelSelectEl.innerHTML = `<span style="font-size:12px;color:var(--text-faint);padding:6px 8px;">Models unavailable</span>`;
+  }
+}
+
+function renderLangList() {
+  langList.innerHTML = LANGUAGES.map(l => `
+    <div class="lang-option ${selectedLanguages.has(l.code) ? 'checked' : ''}" data-code="${l.code}">
+      <div class="checkbox"></div>
+      <div class="glyph-badge">${l.glyph}</div>
+      <div class="lang-option-label">${l.name}</div>
+      <div class="lang-option-code mono">${l.code}</div>
+    </div>
+  `).join("");
+
+  langList.querySelectorAll(".lang-option").forEach(opt => {
+    opt.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const code = opt.dataset.code;
+      if (selectedLanguages.has(code)) selectedLanguages.delete(code);
+      else selectedLanguages.add(code);
+      renderLangList();
+      updateLangTrigger();
+    });
+  });
+}
+
+function updateLangTrigger() {
+  langCount.textContent = selectedLanguages.size;
+  localStorage.setItem("promptStudioLangs", JSON.stringify(Array.from(selectedLanguages)));
+  if (selectedLanguages.size === 0) {
+    langTriggerLabel.textContent = "Select languages";
+  } else if (selectedLanguages.size <= 3) {
+    langTriggerLabel.textContent = Array.from(selectedLanguages).join(", ");
+  } else {
+    langTriggerLabel.textContent = `${selectedLanguages.size} selected`;
+  }
+}
+
+function setStatus(state, text) {
+  statusPill.className = `status-pill ${state}`;
+  statusText.textContent = text;
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
+function bindEvents() {
+  document.querySelectorAll(".mode-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".mode-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      currentMode = tab.dataset.mode;
+    });
+  });
+
+  inputArea.addEventListener("input", () => {
+    inputCharCount.textContent = `${inputArea.value.length} chars`;
+  });
+
+  langTrigger.addEventListener("click", (e) => {
+    langPanel.classList.toggle("open");
+    e.stopPropagation();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!langPanel.contains(e.target) && !langTrigger.contains(e.target)) {
+      langPanel.classList.remove("open");
+    }
+  });
+
+  el("langClear").addEventListener("click", (e) => {
+    e.stopPropagation();
+    selectedLanguages.clear();
+    renderLangList();
+    updateLangTrigger();
+  });
+
+  el("loadSampleBtn").addEventListener("click", () => {
+    inputArea.value = SAMPLE_PROMPT;
+    inputCharCount.textContent = `${inputArea.value.length} chars`;
+  });
+
+  el("uploadBtn").addEventListener("click", () => el("fileInput").click());
+  el("fileInput").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      inputArea.value = ev.target.result;
+      inputCharCount.textContent = `${inputArea.value.length} chars`;
+    };
+    reader.readAsText(file);
+  });
+
+  el("resetBtn").addEventListener("click", () => {
+    inputArea.value = "";
+    inputCharCount.textContent = "0 chars";
+    lastResult = null;
+    renderEmptyOutput();
+  });
+
+  el("copyBtn").addEventListener("click", () => {
+    const text = getActiveOutputText();
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard");
+  });
+
+  el("downloadBtn").addEventListener("click", () => {
+    if (!lastResult) { showToast("Nothing to download yet"); return; }
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "prompt_studio_output.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  generateBtn.addEventListener("click", generate);
+
+  el("editBtn").addEventListener("click", () => {
+    if (isEditing) {
+      const editedText = el("editArea").value;
+      if (activeOutputTab === "business_logic") {
+        lastResult.business_logic = editedText;
+      } else {
+        lastResult.language_prompts[activeOutputTab] = editedText;
+      }
+      isEditing = false;
+      showToast("Saved");
+    } else {
+      isEditing = true;
+    }
+    renderOutput();
+  });
+
+  el("reviewBtn").addEventListener("click", async () => {
+    if (!lastResult) { showToast("Generate something first"); return; }
+    if (activeOutputTab === "business_logic") { showToast("Select a language tab to review"); return; }
+    const businessLogic = lastResult.business_logic;
+    const languagePrompt = lastResult.language_prompts[activeOutputTab];
+    el("reviewBtn").disabled = true;
+    el("reviewBtn").textContent = "Reviewing…";
+    try {
+      const res = await fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_logic: businessLogic,
+          language_prompt: languagePrompt,
+          language: activeOutputTab,
+          model: currentModel,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Review failed");
+      reviewCache[activeOutputTab] = data.review;
+      renderOutput();
+    } catch (err) {
+      showToast(err.message || "Review failed");
+    } finally {
+      el("reviewBtn").disabled = false;
+      el("reviewBtn").textContent = "🔍 Review";
+    }
+  });
+}
+
+function renderEmptyOutput() {
+  outputTabs.style.display = "none";
+  outputTabs.innerHTML = "";
+  outputBody.innerHTML = `
+    <div class="empty-state">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M8 8H32V32H8V8Z" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/><path d="M20 15V25M15 20H25" stroke="currentColor" stroke-width="2"/></svg>
+      <p>Business logic and per-language prompts will appear here once you generate.</p>
+    </div>`;
+}
+
+function getActiveOutputText() {
+  if (!lastResult) return "";
+  if (activeOutputTab === "business_logic") return lastResult.business_logic || "";
+  return lastResult.language_prompts?.[activeOutputTab] || "";
+}
+
+function renderOutput() {
+  const langs = Object.keys(lastResult.language_prompts || {});
+  const showBusinessLogicTab = lastResult.mode === "extract";
+  const tabs = [
+    ...(showBusinessLogicTab ? [{ id: "business_logic", label: "Business Logic", glyph: "BL" }] : []),
+    ...langs.map(code => {
+      const lang = LANGUAGES.find(l => l.code === code);
+      return { id: code, label: code, glyph: lang ? lang.glyph : code };
+    })];
+
+  const warnings = lastResult.warnings || {};
+
+  outputTabs.style.display = "flex";
+  outputTabs.innerHTML = tabs.map(t => `
+    <div class="output-tab ${t.id === activeOutputTab ? 'active' : ''}" data-tab="${t.id}">
+      <span class="mini-glyph">${t.glyph.slice(0,2)}</span>${t.label}
+      ${warnings[t.id] ? '<span class="warn-dot" title="Invariant warning"></span>' : ''}
+    </div>
+  `).join("");
+
+  outputTabs.querySelectorAll(".output-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      activeOutputTab = tab.dataset.tab;
+      isEditing = false;
+      renderOutput();
+    });
+  });
+
+  const text = getActiveOutputText();
+  const activeWarnings = warnings[activeOutputTab] || [];
+  const banner = activeWarnings.length ? `
+    <div class="warning-banner">
+      <strong>${activeWarnings.length} invariant warning(s) in this output</strong>
+      <ul>${activeWarnings.map(w => `<li>${escapeHtml(w)}</li>`).join("")}</ul>
+    </div>` : "";
+
+  const reviewText = reviewCache[activeOutputTab];
+  const reviewBanner = reviewText ? `
+    <div class="warning-banner" style="background:var(--accent-soft);border-color:var(--accent-soft-border);color:var(--text);">
+      <strong>🔍 AI Review</strong>
+      <div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(reviewText)}</div>
+    </div>` : "";
+
+  if (isEditing) {
+    outputBody.innerHTML = `${banner}${reviewBanner}<textarea class="input-area" id="editArea" style="min-height:400px;">${escapeHtml(text)}</textarea>`;
+  } else {
+    outputBody.innerHTML = `${banner}${reviewBanner}<div class="output-content">${escapeHtml(text)}</div>`;
+  }
+
+  const editBtn = el("editBtn");
+  editBtn.textContent = isEditing ? "💾 Save" : "✏️ Edit";
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function generate() {
+  const raw = inputArea.value.trim();
+  if (!raw) { showToast("Paste a prompt first"); return; }
+  if (selectedLanguages.size === 0) { showToast("Select at least one language"); return; }
+
+  generateBtn.disabled = true;
+  setStatus("generating", "Generating…");
+
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        raw_prompt: raw,
+        mode: currentMode,
+        languages: Array.from(selectedLanguages),
+        model: currentModel,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Generation failed");
+
+    lastResult = data;
+    lastResult.mode = currentMode;
+    activeOutputTab = currentMode === "extract" ? "business_logic" : Array.from(selectedLanguages)[0];
+    renderOutput();
+    setStatus("done", "Done");
+  } catch (err) {
+    setStatus("error", err.message || "Error");
+    showToast(err.message || "Something went wrong");
+  } finally {
+    generateBtn.disabled = false;
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
