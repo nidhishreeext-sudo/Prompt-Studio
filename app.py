@@ -4,6 +4,8 @@ from main import (
     generate_language_prompts_multi,
     resolve_languages,
     review_language_prompt,
+    is_flow_json,
+    extract_text_from_flow_json,
     SUPPORTED_MODELS,
     DEFAULT_MODEL,
 )
@@ -38,6 +40,15 @@ def generate():
 
     if not raw_prompt.strip():
         return jsonify({"error": "Prompt is empty"}), 400
+
+    # If the pasted/uploaded input is a conversation-flow JSON export, flatten it
+    # into a plain-text prompt first — everything downstream (extraction, scoping,
+    # language generation) then runs exactly as it would on a hand-typed prompt.
+    flow_json = is_flow_json(raw_prompt)
+    if flow_json:
+        raw_prompt = extract_text_from_flow_json(flow_json)
+        if not raw_prompt.strip():
+            return jsonify({"error": "Flow JSON was recognized but contained no usable prompt text"}), 400
 
     languages = resolve_languages(requested_languages)
     if not languages:

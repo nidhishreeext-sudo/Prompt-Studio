@@ -256,6 +256,70 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     return {"prompts": ordered_prompts, "warnings": ordered_warnings}
 
 
+# ---------- FLOW JSON SUPPORT ----------
+# Some prompts don't arrive as a single raw text block — they're exported from a
+# conversation-flow builder as JSON: a global system prompt plus a graph of nodes,
+# each with its own "instruction" text. To reuse the exact same distill/scope
+# pipeline, we flatten that JSON into one plain-text document first, then hand it
+# to extract_business_logic() / the scoped path exactly as if it had been typed
+# in directly.
+
+def is_flow_json(raw_text: str) -> dict | None:
+    """Returns the parsed dict if raw_text is a guided_conversation_flow-style
+    JSON export (has a top-level "data.conversationNodes" shape), else None.
+    Anything that isn't valid JSON, or valid JSON but the wrong shape, is left
+    alone so plain-text prompts keep working exactly as before."""
+    try:
+        parsed = json.loads(raw_text)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if isinstance(parsed, dict) and isinstance(parsed.get("data"), dict) and "conversationNodes" in parsed["data"]:
+        return parsed
+    return None
+
+
+def _unescape_markdown(text: str) -> str:
+    """Flow-builder exports often escape markdown characters with a literal
+    backslash (e.g. "\\# Objective", "\\* point"). That backslash is real text
+    once JSON-parsed, not markdown syntax, so strip it for a cleaner document."""
+    return re.sub(r'\\([#*_`])', r'\1', text)
+
+
+def extract_text_from_flow_json(flow_json: dict) -> str:
+    """Flatten a guided_conversation_flow JSON export (global prompt + per-node
+    instructions) into a single plain-text prompt, in the same shape as a
+    hand-written raw system prompt, so it flows through the normal
+    extract/scope + language-prompt pipeline unchanged."""
+    data = flow_json.get("data", {})
+    parts = []
+
+    base_prompt = data.get("prompt", "") or ""
+    if base_prompt.strip():
+        parts.append("# Global System Prompt\n\n" + _unescape_markdown(base_prompt.strip()))
+
+    nodes = data.get("conversationNodes", {}).get("nodes", [])
+    for node in nodes:
+        name = node.get("name") or node.get("id") or "Unnamed Node"
+        instruction = (node.get("instruction") or "").strip()
+        on_enter = (node.get("onEnterSay", {}) or {}).get("message", "") or ""
+        on_enter = on_enter.strip()
+
+        node_text = []
+        if on_enter and on_enter != ".":
+            node_text.append(f"On entering this node, say: {on_enter}")
+        if instruction:
+            node_text.append(_unescape_markdown(instruction))
+
+        if node_text:
+            parts.append(f"## Node: {name}\n\n" + "\n\n".join(node_text))
+
+    initial_message = (data.get("initialMessage", "") or "").strip()
+    if initial_message:
+        parts.append("# Initial Greeting Line\n\n" + initial_message)
+
+    return "\n\n---\n\n".join(parts)
+
+
 LANGUAGE_NAME_MAP = {
     "hindi": "HI", "hi": "HI",
     "english": "EN", "en": "EN",
@@ -469,7 +533,7 @@ Else:
 
 * Go to Node 5.
 
-## Node 4A  Loan-at-Home Interest and Handoff
+## Node 4A – Loan-at-Home Interest and Handoff
 
 Trigger:
 
@@ -483,7 +547,7 @@ If YES:
 * Say you will share details with Loan-at-Home team and they will call shortly to fix a convenient time.
 * Go to Node 5 (Loan-at-Home closing).
 
-## Node 5 Closing
+## Node 5 – Closing
 
 ### Interested – Branch Visit:
 
