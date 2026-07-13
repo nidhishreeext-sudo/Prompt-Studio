@@ -121,22 +121,26 @@ def match_relevant_chunks(business_logic: str, language: str, all_chunks: list) 
 
 SYNTHESIZER_SYSTEM_PROMPT = """You are given a business-logic system prompt for a voice AI agent, and a set of relevant detailed language-specific rule chunks for a target language.
 
-Merge the chunks into ONE comprehensive, well-organized language prompt. Be thorough, not brief — this is a production specification, not a summary.
+Merge the chunks into ONE well-organized, natural-reading language prompt — the kind a senior prompt engineer would hand-write and ship to production, not an exhaustive training manual.
+
+WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
+- Every rule must survive, but express it in tight, flowing prose — a short paragraph per rule, not a bullet-catalog of every possible case.
+- NEVER use markdown tables. Any reference data given as a table or list in the source chunks (number words, pronoun forms, etc.) must be rewritten as natural comma-separated prose (e.g. "1 is ಒಂದು, 2 is ಎರಡು, 10 is ಹತ್ತು" not a pipe table).
+- Use simple, short section headers (### Colloquial Speech, ### Numbers, ### Backchannels) — not numbered mega-sections, not sub-headers nested three levels deep.
+- For examples: keep at most 2-3 of the clearest ✓/✗ pairs or sample sentences per rule. If a chunk lists ten examples of the same pattern, pick the two or three that best illustrate it — do not reproduce every single one. The point is that a reader instantly gets the rule, not that every source example survives verbatim.
+- Do not restate the same rule in multiple places or under multiple headers. If two chunks overlap, merge them into one clean statement.
+- Do not add meta-commentary, headers-about-headers, or explanations of why a rule exists — state the rule and move on.
 
 CRITICAL REQUIREMENTS:
-- Preserve every concrete example (✓/✗ pairs, sample sentences, tables) found in the chunks EXACTLY as given. Do not drop examples to save space.
-- Preserve every specific rule, exception, and edge case mentioned in the chunks — do not compress multiple distinct rules into one vague sentence.
-- If a chunk contains grammar rules (suffixes, verb forms, postpositions), reproduce the full rule set with its examples, not just a one-line summary.
-- Organize by clear category headers (Colloquial Speech, Grammar, Honorifics, Numbers, Currency, Backchannels, Fillers, Call Flow, etc.)
-- Remove only exact duplicate content across chunks. Do not remove detail, examples, or nuance in the name of conciseness.
+- Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant examples and formatting overhead.
 - Do not include any business logic — only language/speech rules.
-- Length should reflect the depth of the source chunks. A rich set of chunks should produce a long, detailed prompt — do not artificially shorten it.
+- A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, not that every example and every table row is reproduced.
 
-MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance — they must remain their own explicit, clearly-labeled section every time their source chunk is present in the input below.
+MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated short section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance.
 
 STRICT NO-INVENTION RULE (applies to every category, especially Fillers and Backchannels):
 - Use ONLY the words, phrases, and examples that literally appear in the provided chunks below. Never invent, guess, or supplement with additional filler words, backchannel phrases, honorific forms, or example sentences that are not present in the source chunks — even if you believe them to be correct or natural for this language.
-- If a chunk's coverage for a category is thin (e.g. only two filler words given), output only those — do not pad the list with more of your own to seem more "thorough." Thoroughness means fully using what's given, not extending it.
+- If a chunk's coverage for a category is thin (e.g. only two filler words given), output only those — do not pad the list with more of your own to seem more "thorough."
 - If a category (e.g. Backchannels) has no corresponding chunk at all in the input below, omit that section entirely rather than generating one from general knowledge of the language.
 
 Output the final language prompt only, no commentary."""
@@ -157,7 +161,7 @@ RELEVANT LANGUAGE CHUNKS FOR {language}:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=8000)
+        config=_build_config(model, max_output_tokens=4000)
     )
     return response.text
 
