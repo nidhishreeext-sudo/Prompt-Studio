@@ -80,7 +80,9 @@ TAG_TRIGGERS = {
 }
 
 ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "call_closing",
-                   "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation"]
+                   "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation",
+                   "hold_pause", "interruption", "preserve_english_terms", "language_switching",
+                   "time_pronunciation", "no_echo"]
 
 
 def _keyword_present(text_lower: str, keyword: str) -> bool:
