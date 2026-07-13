@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 from google import genai
@@ -73,7 +74,7 @@ TAG_TRIGGERS = {
     "pincode": ["pin code", "pincode", "postal code"],
     "phone_number": ["phone number", "mobile number", "contact number"],
     "currency": ["rupee", "loan amount", "₹", "rate", "interest", "price", "fee", "cost", "amount"],
-    "gold_weight": ["gold weight", "grams", "gold quantity", "tola", "kg", "gold"],
+    "gold_weight": ["gold weight", "gold quantity", "gold in grams", "grams of gold", "tola of gold", "weight of gold"],
     "dates": ["appointment", "visit day", "callback", "schedule", "date"],
     "branch_names": ["branch", "location", "nearest"],
 }
@@ -82,12 +83,26 @@ ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "c
                    "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation"]
 
 
+def _keyword_present(text_lower: str, keyword: str) -> bool:
+    """True only if `keyword` appears as a genuine whole word/phrase in text_lower,
+    not merely as a substring buried inside a longer unrelated word.
+
+    Uses letter-adjacency (not \\b) as the boundary check on purpose: \\b treats
+    underscores as word characters, which would fail to match e.g. "amount"
+    inside "loan_amount_required". Requiring only that no LETTER sits directly
+    adjacent still rejects false hits like "rate" inside "generate" while still
+    correctly matching "amount" next to underscores, digits, or punctuation.
+    """
+    pattern = r'(?<![a-z])' + re.escape(keyword) + r'(?![a-z])'
+    return re.search(pattern, text_lower) is not None
+
+
 def match_relevant_chunks(business_logic: str, language: str, all_chunks: list) -> list:
     business_logic_lower = business_logic.lower()
     triggered_tags = set()
 
     for tag, keywords in TAG_TRIGGERS.items():
-        if any(kw in business_logic_lower for kw in keywords):
+        if any(_keyword_present(business_logic_lower, kw) for kw in keywords):
             triggered_tags.add(tag)
 
     triggered_tags.update(ALWAYS_ON_TAGS)
@@ -454,7 +469,7 @@ Else:
 
 * Go to Node 5.
 
-## Node 4A – Loan-at-Home Interest and Handoff
+## Node 4A  Loan-at-Home Interest and Handoff
 
 Trigger:
 
@@ -468,7 +483,7 @@ If YES:
 * Say you will share details with Loan-at-Home team and they will call shortly to fix a convenient time.
 * Go to Node 5 (Loan-at-Home closing).
 
-## Node 5 – Closing
+## Node 5 Closing
 
 ### Interested – Branch Visit:
 
