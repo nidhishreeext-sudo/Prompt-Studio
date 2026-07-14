@@ -163,7 +163,7 @@ RELEVANT LANGUAGE CHUNKS FOR {language}:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=4000)
+        config=_build_config(model, max_output_tokens=8000)
     )
     return response.text
 
