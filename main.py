@@ -74,15 +74,20 @@ TAG_TRIGGERS = {
     "pincode": ["pin code", "pincode", "postal code"],
     "phone_number": ["phone number", "mobile number", "contact number"],
     "currency": ["rupee", "loan amount", "₹", "rate", "interest", "price", "fee", "cost", "amount"],
-    "gold_weight": ["gold weight", "gold quantity", "gold in grams", "grams of gold", "tola of gold", "weight of gold"],
+    # "gold" / "tola" / "karat" / "carat" are safe as bare-word triggers (unlike generic weight
+    # units like "kg" or "grams", which falsely matched unrelated domains e.g. vehicle weight) —
+    # letter-boundary matching means these only fire on the real word, not a substring of another.
+    "gold_weight": ["gold", "tola", "karat", "carat", "gold weight", "gold quantity"],
     "dates": ["appointment", "visit day", "callback", "schedule", "date"],
+    "time_pronunciation": ["appointment", "callback", "schedule", "time", "o'clock", "working hours",
+                            "office hours", "morning", "afternoon", "evening", "reschedul"],
     "branch_names": ["branch", "location", "nearest"],
 }
 
 ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "call_closing",
                    "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation",
                    "hold_pause", "interruption", "preserve_english_terms", "language_switching",
-                   "time_pronunciation", "no_echo"]
+                   "no_echo"]
 
 
 def _keyword_present(text_lower: str, keyword: str) -> bool:
@@ -124,17 +129,17 @@ SYNTHESIZER_SYSTEM_PROMPT = """You are given a business-logic system prompt for 
 Merge the chunks into ONE well-organized, natural-reading language prompt — the kind a senior prompt engineer would hand-write and ship to production, not an exhaustive training manual.
 
 WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
-- Every rule must survive, but express it in tight, flowing prose — a short paragraph per rule, not a bullet-catalog of every possible case.
-- NEVER use markdown tables. Reformat any table into natural comma-separated prose instead (e.g. "1 is ಒಂದು, 2 is ಎರಡು, 10 is ಹತ್ತು" not a pipe table). This is a FORMATTING change only.
+- Every rule must survive, but express it in tight, flowing prose for general rules — a short paragraph per rule, not a bullet-catalog of every possible case.
+- NEVER use markdown pipe-tables ( | col | col | ). That specific syntax is banned.
 - TWO DIFFERENT THINGS, DO NOT CONFUSE THEM:
-  1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): keep at most 2-3 of the clearest ones per rule. These exist to demonstrate a pattern, not to be an exhaustive catalog.
-  2. ESSENTIAL REFERENCE VOCABULARY (a number-word lookup table, digit-by-digit letter readings, a fixed list of preserved English terms): reproduce this COMPLETELY, every entry, just reformatted out of table syntax into prose. This is not illustrative, it is vocabulary the agent needs to actually speak arbitrary numbers or terms correctly at runtime — especially critical for languages with irregular number formation where the model cannot reliably derive missing entries on its own. Never trim, sample, or abbreviate a reference vocabulary list with "etc." or similar.
+  1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): keep at most 2-3 of the clearest ones per rule, in prose. These exist to demonstrate a pattern, not to be an exhaustive catalog.
+  2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES (a number-word lookup table, digit-by-digit letter readings, a fixed list of preserved English terms, a set of per-minute time-fusion rules): reproduce this COMPLETELY, every entry, and use a clean bulleted list, one entry per line, NOT a pipe-table and NOT force-collapsed into a run-on paragraph. A list like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable and usable to whoever reads this prompt than the same content buried in a sentence. Never trim, sample, or abbreviate this kind of list with "etc." or similar.
 - Use simple, short section headers (### Colloquial Speech, ### Numbers, ### Backchannels) — not numbered mega-sections, not sub-headers nested three levels deep.
 - Do not restate the same rule in multiple places or under multiple headers. If two chunks overlap, merge them into one clean statement.
 - Do not add meta-commentary, headers-about-headers, or explanations of why a rule exists — state the rule and move on.
 
 CRITICAL REQUIREMENTS:
-- Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant illustrative examples and formatting overhead, never trim reference vocabulary.
+- Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant illustrative examples and formatting overhead, never trim reference data.
 - Do not include any business logic — only language/speech rules.
 - A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, and every reference vocabulary entry survives, not that every illustrative example and every table's visual formatting is reproduced.
 
