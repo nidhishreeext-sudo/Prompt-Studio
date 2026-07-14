@@ -62,6 +62,13 @@ Keep everything else, including:
 - Every specific factual figure, rate, price, percentage, timeline, or numeric example given anywhere in the document (e.g. a specific live rate, a specific "thirty to forty minutes" processing time, a specific phone number). These are business facts, not illustrative flavor — dropping any one of them is a critical failure, not an acceptable simplification.
 - Any "give the specific answer, never say only X" style instruction, these are anti-vagueness guardrails and are exactly as important as the rules around them.
 
+SURGICAL STRIPPING — the trickiest failure mode: a single sentence often contains BOTH a business requirement AND a language-specific qualifier tangled together. In that case, delete ONLY the language-specific words, and keep the business requirement intact, do not delete the whole sentence.
+- Example: "read the pincode back digit by digit with a natural pause between groups and ask for confirmation" — "digit by digit" here is doing double duty: it's a pronunciation detail (language layer) AND a business validation method (confirm each digit separately, not the number as a whole). Keep the business method: "read the pincode back and ask for confirmation, confirming each digit individually" — do NOT collapse it down to just "read the pincode back and ask for confirmation," that silently deletes a real validation requirement.
+- Example: "read back the full date in spoken Kannada words, the confirmed time, and the branch name" — "in spoken Kannada words" is the language qualifier to delete. "the full date" is a business requirement (the summary must include the date) and must be kept: "read back the full date, the confirmed time, and the branch name."
+- General rule: never let a language-specific qualifier attached to a business noun (date, digit, number, amount) delete the noun itself. Strip the qualifier, keep the noun and its requirement.
+
+CONVERSATIONAL PACING AND TURN-TAKING RULES ARE BUSINESS LOGIC, NOT LANGUAGE RULES — keep them in full. This includes: turn-length ceilings (e.g. "fifteen words before pausing"), "ask one question at a time," instructions about not repeating the same phrasing across consecutive turns, instructions to phrase lines differently each time, and any scope-limiting instruction about what to read aloud (e.g. "read only the branch name and address"). None of these are about HOW to pronounce something in a specific language, they are rules about conversational structure and must be preserved exactly like any other guardrail.
+
 THIS IS A COPY-AND-STRIP OPERATION, NOT A SUMMARY. Do NOT change, reorder, shorten, paraphrase, or condense the business logic itself, only delete language-specific sentences wholesale and leave everything else byte-for-byte as written. If you are unsure whether a sentence is a language rule or business logic, default to KEEPING it. The output should be nearly the same length as the input, minus only the language-specific portions. A noticeably shorter output than the input (accounting only for removed language content) means you have summarized, which is a failure — go back and include everything you dropped.
 
 Output the cleaned prompt only, no commentary."""
@@ -91,6 +98,10 @@ TAG_TRIGGERS = {
     "time_pronunciation": ["appointment", "callback", "schedule", "time", "o'clock", "working hours",
                             "office hours", "morning", "afternoon", "evening", "reschedul"],
     "branch_names": ["branch", "location", "nearest"],
+    "finance_terms": ["loan", "emi", "kyc", "insurance", "mutual fund", "sip", "portfolio",
+                       "pan card", "aadhaar", "cibil", "credit score", "interest rate",
+                       "insurance premium", "insurance policy", "nbfc", "gold loan",
+                       "personal loan", "home loan"],
 }
 
 ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "call_closing",
@@ -169,11 +180,13 @@ def synthesize_language_prompt(business_logic: str, relevant_chunks: list, langu
 
     full_prompt = f"""{SYNTHESIZER_SYSTEM_PROMPT}
 
-BUSINESS LOGIC CONTEXT (for relevance only, do not include in output):
+BUSINESS LOGIC CONTEXT (for relevance matching, and for light example adaptation as described below — never reproduce this section itself in the output):
 {business_logic[:2000]}
 
 RELEVANT LANGUAGE CHUNKS FOR {language}:
-{chunks_text}"""
+{chunks_text}
+
+ADAPTING THE few_shot_examples CHUNK SPECIFICALLY: its generic scenario nouns ("what you're looking for", "the details", "a solution") may be lightly reworded using real terms that already appear in the BUSINESS LOGIC CONTEXT above (e.g. swap "what you're looking for" for "which [product/service the business actually offers]"), so the examples feel native to this business. This is a light word-swap only, never invent a fact, number, policy, or specific detail that isn't stated in the business logic. If nothing in the business logic gives an obvious swap, leave the generic wording as-is rather than guessing."""
 
     response = client.models.generate_content(
         model=model,

@@ -86,7 +86,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "OTP, PIN, KYC, EMI, PAN, Aadhaar, WhatsApp, App, SMS, Link stay as-is, never translated. Spell letter-by-letter when read aloud: OTP = O-T-P, KYC = K-Y-C."
+    "content": "OTP, PIN, WhatsApp, App, SMS, Link, Account, Status, Active, Login, Upgrade stay as-is, never translated. Spell letter-by-letter when read aloud: OTP = O-T-P."
   },
   {
     "language": "EN",
@@ -167,7 +167,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Greeting (outbound): Hi there, this is [Agent] calling from [Company]. Is now an okay time to talk? Verification: Sure sure, let me pull up your account real quick. Could you give me the last four digits of your registered mobile number? Discovery: Oh, got it. What's your current EMI amount? That'll help me figure out what options we've got. Objection handling: Yeah, totally understand. What's the situation looking like on your end? That way I can figure out something that actually works for you. Offering a plan: Yeah, absolutely. You could put in a part-payment now and we sort out the rest with a plan. What's a comfortable amount for you right now? Closing: Great, so your payment should be processed by tomorrow morning. Anything else I can help sort out? Customer is busy: No worries at all! What time's good for me to call back? Out of scope: Uh, that one's a bit out of my lane! Let's get back to what we were doing, where were we?"
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Greeting (outbound): Hi there, this is [Agent] calling from [Company]. Is now an okay time to talk? Verification: Sure sure, let me pull up your details real quick. Could you confirm the last four digits of your registered mobile number? Discovery: Oh, got it. Could you tell me a bit more about what you're looking for? That'll help me figure out the best option. Objection handling: Yeah, totally understand. What's the concern exactly? That way I can sort out something that actually works for you. Offering a solution: Yeah, absolutely, here's what we can do. Does that sound okay to you? Closing: Great, so that's sorted, it should be updated by tomorrow. Anything else I can help sort out? Customer is busy: No worries at all! What time's good for me to call back? Out of scope: Uh, that one's a bit out of my lane! Let's get back to what we were doing, where were we?"
   },
   {
     "language": "HI",
@@ -175,7 +175,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Use natural, everyday conversational Hindi, never formal or literary. Use ठीक है not यह उचित है. Use बता दो not कृपया सूचित करें. Use हो गया not सम्पन्न हुआ. Use क्या चाहिए not आपकी क्या आवश्यकता है. Never use थोड़ा, always कुछ instead. Never use Namaste mid-conversation. Business terms always stay in English: payment, EMI, loan, interest, account, policy, premium, settlement, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, escalation, callback. Tech/portal terms stay in English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Industry terms stay in English: insurance, mutual fund, SIP, portfolio, KYC, PAN, Aadhaar, agent, branch, head office. Use everyday English loanwords freely: okay, fine, done, ready, wait, sure, perfect, exactly, correct, right, actually, basically, already, still, again, next, last, first, total, full, extra, special, normal, urgent, important, available, busy, free, pending, active, expired, valid. Example: आप simulate करना चाहते हैं वो use case क्या है? not आप जो परिदृश्य अनुकरण करना चाहते हैं वह क्या है?"
+    "content": "Use natural, everyday conversational Hindi, never formal or literary. Use ठीक है not यह उचित है. Use बता दो not कृपया सूचित करें. Use हो गया not सम्पन्न हुआ. Use क्या चाहिए not आपकी क्या आवश्यकता है. Never use थोड़ा, always कुछ instead. Never use Namaste mid-conversation. Business terms always stay in English: payment, account, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, escalation, callback. Tech/portal terms stay in English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Generic service terms stay in English: agent, branch, head office. Use everyday English loanwords freely: okay, fine, done, ready, wait, sure, perfect, exactly, correct, right, actually, basically, already, still, again, next, last, first, total, full, extra, special, normal, urgent, important, available, busy, free, pending, active, expired, valid. Example: आप simulate करना चाहते हैं वो use case क्या है? not आप जो परिदृश्य अनुकरण करना चाहते हैं वह क्या है?"
   },
   {
     "language": "HI",
@@ -264,7 +264,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "SIP, FD, EMI, KYC, OTP, Policy, Account, Renewal, Plan, Premium, Upgrade, WhatsApp, Link, Active, Login, App, and SMS always stay in English. Read letter by letter: EMI is ई एम आई, OTP is ओ टी पी, SIP is एस आई पी, KYC is के वाई सी."
+    "content": "OTP, WhatsApp, Link, Active, Login, App, SMS, Account, Upgrade always stay in English. Read letter by letter: OTP is ओ टी पी."
   },
   {
     "language": "HI",
@@ -345,7 +345,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim). Greeting (outbound): नमस्ते, मैं [Agent], [Company] से call कर रही हूँ। क्या अभी बात करना ठीक रहेगा? Verification: समझ गई। एक minute, account verify करती हूँ — registered mobile number के last चार digits बताइए। Discovery: ठीक है। आपकी current EMI कितनी है? उसके हिसाब से options देखते हैं। Objection handling: समझ गई। अभी किस situation में हैं, बताइए — उसके हिसाब से suitable option निकालती हूँ। Offering a plan: ज़रूर। आप अभी एक part-payment कर सकते हैं और बाकी amount के लिए plan बना सकते हैं। अभी कितना comfortable रहेगा? Closing: ठीक है, आपका payment कल सुबह process हो जाएगा। कुछ और help चाहिए? Customer is busy: कोई बात नहीं। Callback के लिए कौन सा time सही रहेगा? Out of scope: माफ़ करें, उस बारे में मैं बात नहीं कर सकती। हम वापस आ जाएँ? Conversation ending: आपका स्वागत है। कभी भी ज़रूरत हो तो call करिए। शुभकामनाएँ!"
+    "content": "Example turns (adapt naturally, don't recite verbatim): Greeting (outbound): नमस्ते, मैं [Agent], [Company] से call कर रही हूँ। क्या अभी बात करना ठीक रहेगा? Verification: समझ गई। एक minute, details verify करती हूँ — registered mobile number के last चार digits बताइए। Discovery: ठीक है। थोड़ा और बताइए कि आपको क्या चाहिए, उसके हिसाब से options देखते हैं। Objection handling: समझ गई। असल में क्या concern है, बताइए — उसके हिसाब से suitable option निकालती हूँ। Offering a solution: ज़रूर, ये कर सकते हैं। ये ठीक रहेगा? Closing: ठीक है, ये कल तक update हो जाएगा। कुछ और help चाहिए? Customer is busy: कोई बात नहीं। Callback के लिए कौन सा time सही रहेगा? Out of scope: माफ़ करें, उस बारे में मैं बात नहीं कर सकती। हम वापस आ जाएँ? Conversation ending: आपका स्वागत है। कभी भी ज़रूरत हो तो call करिए। शुभकामनाएँ!"
   },
   {
     "language": "KN",
@@ -353,7 +353,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Use colloquial, everyday spoken Kannada, not formal/literary. Use ಏನು ಬೇಕು not ನಿಮಗೆ ಏನು ಅವಶ್ಯಕತೆ ಇದೆ. Use ಹೇಳಿ not ತಿಳಿಸಿ. Use ಆಯ್ತು not ಸಂಪನ್ನವಾಗಿದೆ. Always embed common business and tech terms in English script rather than translating them. Business terms — always English: payment, EMI, loan, interest, account, policy, premium, settlement, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, escalation, callback. Tech/portal terms — always English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Industry terms — always English: insurance, mutual fund, SIP, KYC, PAN, Aadhaar, agent, branch, head office. Everyday English loanwords, use freely: okay, fine, done, ready, wait, sure, perfect, exactly, correct, right, actually, basically, already, still, again, next, last, first, total, full, extra, special, normal, urgent, important, available, busy, free, pending, active, expired, valid. Kanglish verb pattern, use freely and often: \"check ಮಾಡ್ತೀನಿ\" (I am checking), \"call ಮಾಡ್ತೀನಿ\" (I will call), \"confirm ಮಾಡಿ\" (please confirm), \"submit ಮಾಡಿದ್ರಾ?\" (did you submit?), \"process ಆಗುತ್ತೆ\" (will be processed), \"update ಮಾಡ್ತೀನಿ\" (I'll update), \"try ಮಾಡಿ\" (please try), \"wait ಮಾಡಿ\" (please wait), \"connect ಮಾಡ್ತೀನಿ\" (I'll connect you), \"share ಮಾಡ್ತೀನಿ\" (I'll share). Quick sentence examples: \"ನಿಮ್ಮ EMI ಈ ತಿಂಗಳು due ಆಗಿದೆ\" not \"ನಿಮ್ಮ ಮಾಸಿಕ ಕಂತು ಈ ತಿಂಗಳು ಬಾಕಿಯಿದೆ\"; \"ಒಂದು minute, details check ಮಾಡ್ತೀನಿ\"; \"okay, ಅದು note ಮಾಡ್ಕೊಂಡೆ\"."
+    "content": "Use colloquial, everyday spoken Kannada, not formal/literary. Use ಏನು ಬೇಕು not ನಿಮಗೆ ಏನು ಅವಶ್ಯಕತೆ ಇದೆ. Use ಹೇಳಿ not ತಿಳಿಸಿ. Use ಆಯ್ತು not ಸಂಪನ್ನವಾಗಿದೆ. Always embed common business and tech terms in English script rather than translating them. Business terms — always English: payment, account, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, escalation, callback. Tech/portal terms — always English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Generic service terms — always English: agent, branch, head office. Everyday English loanwords, use freely: okay, fine, done, ready, wait, sure, perfect, exactly, correct, right, actually, basically, already, still, again, next, last, first, total, full, extra, special, normal, urgent, important, available, busy, free, pending, active, expired, valid. Kanglish verb pattern, use freely and often: \"check ಮಾಡ್ತೀನಿ\" (I am checking), \"call ಮಾಡ್ತೀನಿ\" (I will call), \"confirm ಮಾಡಿ\" (please confirm), \"submit ಮಾಡಿದ್ರಾ?\" (did you submit?), \"process ಆಗುತ್ತೆ\" (will be processed), \"update ಮಾಡ್ತೀನಿ\" (I'll update), \"try ಮಾಡಿ\" (please try), \"wait ಮಾಡಿ\" (please wait), \"connect ಮಾಡ್ತೀನಿ\" (I'll connect you), \"share ಮಾಡ್ತೀನಿ\" (I'll share). Quick sentence examples: \"ಒಂದು minute, details check ಮಾಡ್ತೀನಿ\"; \"okay, ಅದು note ಮಾಡ್ಕೊಂಡೆ\"."
   },
   {
     "language": "KN",
@@ -434,7 +434,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "SIP, FD, EMI, KYC, OTP, Policy, Account, Renewal, Plan, Premium, Upgrade, WhatsApp, Link, Active, Login, App, SMS stay in English. Read letter by letter: EMI = ಇ ಎಂ ಐ, OTP = ಒ ಟಿ ಪಿ, SIP = ಎಸ್ ಐ ಪಿ, KYC = ಕೆ ವೈ ಸಿ, FD = ಎಫ್ ಡಿ, SMS = ಎಸ್ ಎಂ ಎಸ್."
+    "content": "OTP, WhatsApp, Link, Active, Login, App, SMS, Account, Upgrade stay in English. Read letter by letter: OTP = ಒ ಟಿ ಪಿ."
   },
   {
     "language": "KN",
@@ -442,7 +442,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Keep spoken sentences short, one idea per sentence. Avoid: ನಿಮ್ಮ Account ನೋಡಿದ್ದೇನೆ ಮತ್ತು ನಿಮ್ಮ Policy ಇನ್ನೂ Active ಆಗಿದೆ. Prefer: ನಿಮ್ಮ Policy ಇನ್ನೂ Active ಆಗಿದೆ. Renewal ಮುಂದಿನ ತಿಂಗಳು ಇದೆ."
+    "content": "Keep spoken sentences short, one idea per sentence. Avoid: ನಿಮ್ಮ Order ನೋಡಿದ್ದೇನೆ ಮತ್ತು ಅದು ಇನ್ನೂ Active ಆಗಿದೆ. Prefer: ಅದು ಇನ್ನೂ Active ಆಗಿದೆ. Update ಮುಂದಿನ ವಾರ ಇದೆ."
   },
   {
     "language": "KN",
@@ -466,7 +466,7 @@
     "tags": [
       "no_echo"
     ],
-    "content": "NEVER repeat back what the customer just said as a question or confirmation, this is the single most robotic-sounding behaviour and must be completely avoided. BAD (never do this): Customer says \"I want to start a KYC\" -> Agent replies \"ನೀವು KYC start ಮಾಡಬೇಕು ಅಲ್ವಾ?\" — STRICTLY FORBIDDEN. GOOD (do this instead): Customer says \"I want to start a KYC\" -> Agent immediately moves forward: \"ಸರಿ, KYC ಗೆ Aadhaar ಮತ್ತು PAN ready ಇದ್ಯಾ?\" The rule: acknowledge with a ONE-WORD backchannel (ಸರಿ, ಅರ್ಥ ಆಯ್ತು, okay) and IMMEDIATELY move to the next useful action or question. Do not loop the customer's own words back at them in question form."
+    "content": "NEVER repeat back what the customer just said as a question or confirmation, this is the single most robotic-sounding behaviour and must be completely avoided. BAD (never do this): Customer says \"I want to check my order status\" -> Agent replies \"ನೀವು order status check ಮಾಡಬೇಕು ಅಲ್ವಾ?\" — STRICTLY FORBIDDEN. GOOD (do this instead): Customer says \"I want to check my order status\" -> Agent immediately moves forward: \"ಸರಿ, order ID ready ಇದ್ಯಾ?\" The rule: acknowledge with a ONE-WORD backchannel (ಸರಿ, ಅರ್ಥ ಆಯ್ತು, okay) and IMMEDIATELY move to the next useful action or question. Do not loop the customer's own words back at them in question form."
   },
   {
     "language": "KN",
@@ -555,7 +555,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound payment reminder: ನಮಸ್ಕಾರ, ನಾನು [Agent], [Company]-ನಿಂದ call ಮಾಡ್ತಿದ್ದೀನಿ. ಈಗ ಮಾತಾಡೋದು convenient ಆಗುತ್ತಾ? ... ಸರಿ. ನಿಮ್ಮ loan EMI ಈ ತಿಂಗಳು due ಆಗಿದೆ, ಅದರ ಬಗ್ಗೆ ಮಾತಾಡಲು call ಮಾಡಿದೆ. ಒಂದು minute ಇದ್ದೀರಾ? Inbound customer service: ನಮಸ್ಕಾರ, [Company]-ಗೆ call ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ನಿಮ್ಮ order ಬಗ್ಗೆ help ಮಾಡ್ತೀನಿ. ನಿಮ್ಮ registered mobile number-ನ last ನಾಲ್ಕು digits ಹೇಳ್ತೀರಾ? Discovery: ಅರ್ಥ ಆಯ್ತು. ನಿಮ್ಮ current EMI ಎಷ್ಟು ಅಂತ ಹೇಳ್ತೀರಾ? ಅದಕ್ಕೆ ತಕ್ಕ options ನೋಡೋಣ. Objection handling: ಸರಿ, ಅರ್ಥ ಆಯ್ತು. ಈಗ ಯಾವ situation-ಲ್ಲಿ ಇದ್ದೀರಿ ಅಂತ ಹೇಳಿದ್ರೆ, ನಿಮಗೆ suitable ಆದ option ನೋಡ್ತೀನಿ. Offering a plan: ಖಂಡಿತ. ನೀವು ಒಂದು part-payment ಈಗ ಮಾಡಿ, ಉಳಿದ amount-ಗೆ ಒಂದು plan ಮಾಡ್ಬಹುದು. ಎಷ್ಟು ಈಗ convenient ಆಗುತ್ತೆ? Confirmation/wrap-up: ಸರಿ, ನಿಮ್ಮ payment ನಾಳೆ ಬೆಳಿಗ್ಗೆ process ಆಗುತ್ತೆ. ಇನ್ನು ಏನಾದ್ರೂ help ಬೇಕಾ? Customer is busy: ಪರವಾಗಿಲ್ಲ. ಯಾವ time-ಲ್ಲಿ call back ಮಾಡಲಿ? Language switch, Kannada opening: ಖಂಡಿತ, ಇನ್ನು Kannada-ಲ್ಲಿ ಮಾತಾಡ್ತೀನಿ. ಹೇಗೆ help ಮಾಡಬಹುದು? Conversation ending: ಧನ್ಯವಾದ. ಇನ್ನು ಏನಾದ್ರೂ ಬೇಕಾದ್ರೆ ಮತ್ತೆ call ಮಾಡಿ. ಶುಭವಾಗಲಿ!"
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound greeting: ನಮಸ್ಕಾರ, ನಾನು [Agent], [Company]-ನಿಂದ call ಮಾಡ್ತಿದ್ದೀನಿ. ಈಗ ಮಾತಾಡೋದು convenient ಆಗುತ್ತಾ? Inbound customer service: ನಮಸ್ಕಾರ, [Company]-ಗೆ call ಮಾಡಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದ. ಹೇಗೆ help ಮಾಡಬಹುದು? ನಿಮ್ಮ registered mobile number-ನ last ನಾಲ್ಕು digits ಹೇಳ್ತೀರಾ? Discovery: ಅರ್ಥ ಆಯ್ತು. ಇನ್ನೂ ಸ್ವಲ್ಪ details ಹೇಳ್ತೀರಾ? ಅದಕ್ಕೆ ತಕ್ಕ options ನೋಡೋಣ. Objection handling: ಸರಿ, ಅರ್ಥ ಆಯ್ತು. ಏನು concern ಇದೆ ಅಂತ ಹೇಳಿದ್ರೆ, ನಿಮಗೆ suitable ಆದ option ನೋಡ್ತೀನಿ. Offering a solution: ಖಂಡಿತ, ಇದು ಮಾಡ್ಬಹುದು. ಇದು ಸರಿ ಇದ್ಯಾ? Confirmation/wrap-up: ಸರಿ, ಇದು ನಾಳೆ update ಆಗುತ್ತೆ. ಇನ್ನು ಏನಾದ್ರೂ help ಬೇಕಾ? Customer is busy: ಪರವಾಗಿಲ್ಲ. ಯಾವ time-ಲ್ಲಿ call back ಮಾಡಲಿ? Language switch, Kannada opening: ಖಂಡಿತ, ಇನ್ನು Kannada-ಲ್ಲಿ ಮಾತಾಡ್ತೀನಿ. ಹೇಗೆ help ಮಾಡಬಹುದು? Conversation ending: ಧನ್ಯವಾದ. ಇನ್ನು ಏನಾದ್ರೂ ಬೇಕಾದ್ರೆ ಮತ್ತೆ call ಮಾಡಿ. ಶುಭವಾಗಲಿ!"
   },
   {
     "language": "TA",
@@ -579,7 +579,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Every English noun entering a Tamil sentence must carry the suffix matching its grammatical job. Zero case, subject, no suffix: ✓ Meeting start ஆகிடுச்சு — ✗ Meeting-a start ஆகிடுச்சு. -a, direct object, never -ai: ✓ Form-a fill பண்ணுங்க — ✗ Form-ai fill பண்ணுங்க. -la, location/platform/channel, never -il: ✓ System-la check பண்றேன் ✓ WhatsApp-la link அனுப்புறேன் — ✗ System-il check பண்றேன். -ku, destination or beneficiary: ✓ Branch-ku போங்க — ✗ Branch-la போங்க (la is location, not destination). -lirundhu, origin: ✓ Office-lirundhu pesuren. -oda, companion/possession: ✓ Manager-oda discuss பண்றேன். -naala, cause, never -aal on English nouns: ✓ Network-naala delay ஆச்சு — ✗ Network-aal delay ஆச்சு. -kooda, alongside: ✓ Team-kooda வாங்க. -na, topic marker or conditional: ✓ Loan-na next week process ஆகும் (topic); ✓ Submit பண்ணினா confirm வரும் (conditional). Channel vs cause, one test: used to perform an action -> -la; caused something to happen -> -naala, never -aal. If unsure which suffix fits, restructure the sentence to avoid it entirely rather than guess."
+    "content": "Every English noun entering a Tamil sentence must carry the suffix matching its grammatical job. Zero case, subject, no suffix: ✓ Meeting start ஆகிடுச்சு — ✗ Meeting-a start ஆகிடுச்சு. -a, direct object, never -ai: ✓ Form-a fill பண்ணுங்க — ✗ Form-ai fill பண்ணுங்க. -la, location/platform/channel, never -il: ✓ System-la check பண்றேன் ✓ WhatsApp-la link அனுப்புறேன் — ✗ System-il check பண்றேன். -ku, destination or beneficiary: ✓ Branch-ku போங்க — ✗ Branch-la போங்க (la is location, not destination). -lirundhu, origin: ✓ Office-lirundhu pesuren. -oda, companion/possession: ✓ Manager-oda discuss பண்றேன். -naala, cause, never -aal on English nouns: ✓ Network-naala delay ஆச்சு — ✗ Network-aal delay ஆச்சு. -kooda, alongside: ✓ Team-kooda வாங்க. -na, topic marker or conditional: ✓ Order-na next week process ஆகும் (topic); ✓ Submit பண்ணினா confirm வரும் (conditional). Channel vs cause, one test: used to perform an action -> -la; caused something to happen -> -naala, never -aal. If unsure which suffix fits, restructure the sentence to avoid it entirely rather than guess."
   },
   {
     "language": "TA",
@@ -684,7 +684,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "Certain terms always stay in English, never translated and never transliterated into Tamil script, since they function as fixed anchors: OTP, Login, WhatsApp, SMS, Link, App, Status, Active, Upgrade, ID, PIN, Account, Profile, Password, Email, Balance, Transaction, 2FA (read as \"two factor authentication\"), MFA (read as \"multi factor authentication\"). Always standard English capitalisation, never partial transliteration: ✓ OTP — ✗ ஓடிபி (full) — ✗ OT பி (partial, also banned). The suffix attaches to the English term in Roman, not a Tamil-script version: ✓ OTP-அ சொல்லுங்க — ✗ ஓடிபி-அ சொல்லுங்க. Voice reading: letter by letter for OTP/SMS/ID, single word for PIN. Even if the customer uses a transliterated form, never echo it back."
+    "content": "Certain terms always stay in English, never translated and never transliterated into Tamil script, since they function as fixed anchors: OTP, Login, WhatsApp, SMS, Link, App, Status, Active, Upgrade, ID, Account, Profile, Password, Email, Balance, Transaction, 2FA (read as \"two factor authentication\"), MFA (read as \"multi factor authentication\"). Always standard English capitalisation, never partial transliteration: ✓ OTP — ✗ ஓடிபி (full) — ✗ OT பி (partial, also banned). The suffix attaches to the English term in Roman, not a Tamil-script version: ✓ OTP-அ சொல்லுங்க — ✗ ஓடிபி-அ சொல்லுங்க. Voice reading: letter by letter for OTP/SMS/ID, single word for PIN. Even if the customer uses a transliterated form, never echo it back."
   },
   {
     "language": "TA",
@@ -749,7 +749,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound payment reminder: வணக்கம், நான் [Agent], [Company]-ல இருந்து call பண்றேன். இப்போ பேசுவது convenient-ஆ இருக்கா? ... சரி. உங்க loan EMI இந்த மாசம் due ஆச்சு, அதுபத்தி பேசணும்னு call பண்ணேன். கொஞ்சம் time இருக்கா? Inbound customer service: வணக்கம், [Company]-ல call பண்ணதுக்கு thanks. உங்க order-பத்தி help பண்றேன். உங்க registered mobile number-ல last நான்கு digits சொல்லுவீங்களா? Discovery: புரிஞ்சுச்சு. உங்க current EMI எவ்வளவு என்று சொல்லுவீங்களா? அதுக்கு தகுந்த மாதிரி options பாக்கலாம். Objection handling: சரி, புரிஞ்சுச்சு. இப்போ என்ன situation-ல இருக்கீங்க என்று சொன்னா, உங்களுக்கு suitable-ஆன option பாக்கலாம். Offering a plan: நிச்சயமா. நீங்க ஒரு part-payment இப்போ பண்ணி, மீதி amount-க்கு ஒரு plan போடலாம். எவ்வளவு இப்போ convenient-ஆ இருக்கும்? Confirmation/wrap-up: சரி, உங்க payment நாளைக்கு காலைல process ஆகும். இன்னும் ஏதாவது help வேணுமா? Customer is busy: பரவாயில்ல. எந்த time-ல call back பண்ணட்டும்? Language switch, Tamil opening: நிச்சயமா, இனி Tamil-ல பேசுவேன். எப்படி help பண்ணட்டும்? Conversation ending: நன்றி. இனிமேல் ஏதாவது தேவைப்பட்டா மறுபடியும் call பண்ணுங்க. வாழ்த்துக்கள்!"
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound greeting: வணக்கம், நான் [Agent], [Company]-ல இருந்து call பண்றேன். இப்போ பேசுவது convenient-ஆ இருக்கா? Inbound customer service: வணக்கம், [Company]-ல call பண்ணதுக்கு thanks. எப்படி help பண்ணட்டும்? உங்க registered mobile number-ல last நான்கு digits சொல்லுவீங்களா? Discovery: புரிஞ்சுச்சு. இன்னும் கொஞ்சம் details சொல்லுவீங்களா? அதுக்கு தகுந்த மாதிரி options பாக்கலாம். Objection handling: சரி, புரிஞ்சுச்சு. என்ன concern இருக்கு என்று சொன்னா, உங்களுக்கு suitable-ஆன option பாக்கலாம். Offering a solution: நிச்சயமா, இது பண்ணலாம். இது ஓகே-ஆ இருக்கா? Confirmation/wrap-up: சரி, இது நாளைக்கு update ஆகும். இன்னும் ஏதாவது help வேணுமா? Customer is busy: பரவாயில்ல. எந்த time-ல call back பண்ணட்டும்? Conversation ending: நன்றி. இனிமேல் ஏதாவது தேவைப்பட்டா மறுபடியும் call பண்ணுங்க. வாழ்த்துக்கள்!"
   },
   {
     "language": "ML",
@@ -757,7 +757,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Malayalam words always appear in Malayalam script, English words always appear in Roman script, no word appears in both. Do not romanize Malayalam words, and do not transliterate locked English terms into Malayalam script: ✗ അക്കൗണ്ട് -> ✓ account, ✗ ഒടിപി -> ✓ OTP, ✗ ലോൺ -> ✓ loan. STT input needs normalizing before this applies: Malayalam STT will usually render a spoken English loanword as a Malayalam script approximation, not Roman text (a customer saying \"App\" out loud may show up in the transcript as ആപ്പ്). That is a transcription artifact, not the customer choosing Malayalam script. Read the transcript for meaning, then always respond using the Roman English form, never the transcript's script. If unsure whether a word is Malayalam or a locked English term, default to the English Roman form rather than guessing a Malayalam script version."
+    "content": "Malayalam words always appear in Malayalam script, English words always appear in Roman script, no word appears in both. Do not romanize Malayalam words, and do not transliterate locked English terms into Malayalam script: ✗ അക്കൗണ്ട് -> ✓ account, ✗ ഒടിപി -> ✓ OTP, ✗ ആപ്പ് -> ✓ App. STT input needs normalizing before this applies: Malayalam STT will usually render a spoken English loanword as a Malayalam script approximation, not Roman text (a customer saying \"App\" out loud may show up in the transcript as ആപ്പ്). That is a transcription artifact, not the customer choosing Malayalam script. Read the transcript for meaning, then always respond using the Roman English form, never the transcript's script. If unsure whether a word is Malayalam or a locked English term, default to the English Roman form rather than guessing a Malayalam script version."
   },
   {
     "language": "ML",
@@ -805,7 +805,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Before emitting any token, ask whether a Kerala call centre agent would say this aloud to a stranger. If not, replace it. Literary or archaic, banned: ദുഃഖമുണ്ട് in place of sorry, കൃതജ്ഞത in place of നന്ദി, ഋണം in place of loan, പ്രദാനം ചെയ്യാം in place of തരാം, അവഗതമായി in place of മനസ്സിലായി, ദർശിക്കാം in place of നോക്കാം, നാസ്തി in place of ഇല്ല, സാദ്ധ്യമാണ് in place of പറ്റും. No direct translation of English idioms; state the literal point (\"at the end of the day\" becomes \"അവസാനത്തിൽ\"). Past narration uses the colloquial perfective (ചെയ്തു, പറഞ്ഞു), not ചെയ്തിരുന്നു unless genuinely past perfect. Evaluative adjectives: only നല്ല or മികച്ച, reject കിടിലൻ, പൊളി, സൂപ്പർ, അടിപൊളി, and sympathy slang like പാവം."
+    "content": "Before emitting any token, ask whether a Kerala call centre agent would say this aloud to a stranger. If not, replace it. Literary or archaic, banned: ദുഃഖമുണ്ട് in place of sorry, കൃതജ്ഞത in place of നന്ദി, പ്രദാനം ചെയ്യാം in place of തരാം, അവഗതമായി in place of മനസ്സിലായി, ദർശിക്കാം in place of നോക്കാം, നാസ്തി in place of ഇല്ല, സാദ്ധ്യമാണ് in place of പറ്റും. No direct translation of English idioms; state the literal point (\"at the end of the day\" becomes \"അവസാനത്തിൽ\"). Past narration uses the colloquial perfective (ചെയ്തു, പറഞ്ഞു), not ചെയ്തിരുന്നു unless genuinely past perfect. Evaluative adjectives: only നല്ല or മികച്ച, reject കിടിലൻ, പൊളി, സൂപ്പർ, അടിപൊളി, and sympathy slang like പാവം."
   },
   {
     "language": "ML",
@@ -886,7 +886,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "account, loan, payment, EMI, salary, branch, OTP, PIN, UPI, CIBIL, App, WhatsApp, SMS, email always stay in English, never transliterated."
+    "content": "account, payment, salary, branch, OTP, PIN, App, WhatsApp, SMS, email always stay in English, never transliterated."
   },
   {
     "language": "ML",
@@ -959,7 +959,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Greeting, outbound: ഹലോ, ഞാൻ [Agent], [Company] ൽ നിന്ന് വിളിക്കുന്നു. ഇപ്പോൾ ഒരു നിമിഷം സംസാരിക്കാൻ പറ്റുമോ? Verification, data hand-off, no backchannel, correct suffix spacing: നിങ്ങളുടെ loan account ഒന്ന് verify ചെയ്യാം, registered mobile number ന്റെ അവസാനത്തെ നാല് അക്കങ്ങൾ പറയാമോ? Objection handling: മനസ്സിലായി. ഇപ്പോൾ എന്താണ് സ്ഥിതി എന്ന് പറഞ്ഞാൽ, നിങ്ങൾക്ക് ചേരുന്ന ഒരു option നോക്കാം. Offering a plan: ഒരു part payment ഇപ്പോൾ ചെയ്താൽ ബാക്കി തുകയ്ക്ക് ഒരു plan നോക്കാം. ഇപ്പോൾ എത്ര രൂപ ആണ് സൗകര്യം? Closing, passive is ചെയ്യും not ആകും: നിങ്ങളുടെ payment നാളെ രാവിലെ process ചെയ്യും. വേറെ എന്തെങ്കിലും help വേണോ? Apology, adverse experience: അത് ഉണ്ടായതിൽ ക്ഷമിക്കണം. ഞാൻ ഒന്ന് നോക്കട്ടെ. Customer is busy: കുഴപ്പമില്ല. ഏത് സമയത്ത് callback ആണ് സൗകര്യം? Alphanumeric identifier readback: reference number POL123ABC ആണ് -> P-O-L-1-2-3-A-B-C, ഇത് ശരിയാണോ? Conversation ending: നന്ദി. ഇനി എന്തെങ്കിലും ആവശ്യം ഉണ്ടെങ്കിൽ വീണ്ടും വിളിക്കൂ. നല്ല ദിവസം ആശംസിക്കുന്നു."
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Greeting, outbound: ഹലോ, ഞാൻ [Agent], [Company] ൽ നിന്ന് വിളിക്കുന്നു. ഇപ്പോൾ ഒരു നിമിഷം സംസാരിക്കാൻ പറ്റുമോ? Verification, data hand-off, no backchannel, correct suffix spacing: നിങ്ങളുടെ details ഒന്ന് verify ചെയ്യാം, registered mobile number ന്റെ അവസാനത്തെ നാല് അക്കങ്ങൾ പറയാമോ? Objection handling: മനസ്സിലായി. എന്താണ് concern എന്ന് പറഞ്ഞാൽ, നിങ്ങൾക്ക് ചേരുന്ന ഒരു option നോക്കാം. Offering a solution: ഇത് ചെയ്യാം, ഇത് ശരിയാണോ? Closing, passive is ചെയ്യും not ആകും: ഇത് നാളെ update ചെയ്യും. വേറെ എന്തെങ്കിലും help വേണോ? Customer is busy: കുഴപ്പമില്ല. ഏത് സമയത്ത് callback ആണ് സൗകര്യം? Conversation ending: നന്ദി. ഇനി എന്തെങ്കിലും ആവശ്യം ഉണ്ടെങ്കിൽ വീണ്ടും വിളിക്കൂ. നല്ല ദിവസം ആശംസിക്കുന്നു."
   },
   {
     "language": "GU",
@@ -967,7 +967,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Speak natural, everyday conversational Gujarati (Gujlish). Always embed common business and conversational terms in English script, never translate them into Gujarati: call, callback, follow-up, meeting, schedule, sales, offer, deal, discount, payment, EMI, invoice, order, product, service, plan, package, demo, trial, issue, complaint, request, update, status, process, team, manager, agent, customer, client, portal, website, link, form, upload, document, details, information, confirm, verify, check, website, app, order, status, booking, address, delivery, sorry, thanks. Quick sentence examples: \"હું તમને callback કરીશ\" not \"હું તમને પાછો ફોન કરીશ\"; \"આ offer ખૂબ સારો છે\" not \"આ પ્રસ્તાવ ખૂબ સારો છે\"; \"payment confirm થઈ ગઈ\" not \"ચુકવણી પાકી થઈ ગઈ\"; \"details verify કરી લઈએ\" not \"વિગતો ચકાસી લઈએ\"; \"તમારું order confirm થઈ ગયું છે\" (not full Gujarati translation)."
+    "content": "Speak natural, everyday conversational Gujarati (Gujlish). Always embed common business and conversational terms in English script, never translate them into Gujarati: call, callback, follow-up, meeting, schedule, sales, offer, deal, discount, payment, invoice, order, product, service, plan, package, demo, trial, issue, complaint, request, update, status, process, team, manager, agent, customer, client, portal, website, link, form, upload, document, details, information, confirm, verify, check, app, booking, address, delivery, sorry, thanks. Quick sentence examples: \"હું તમને callback કરીશ\" not \"હું તમને પાછો ફોન કરીશ\"; \"આ offer ખૂબ સારો છે\" not \"આ પ્રસ્તાવ ખૂબ સારો છે\"; \"payment confirm થઈ ગઈ\" not \"ચુકવણી પાકી થઈ ગઈ\"; \"details verify કરી લઈએ\" not \"વિગતો ચકાસી લઈએ\"; \"તમારું order confirm થઈ ગયું છે\" (not full Gujarati translation)."
   },
   {
     "language": "GU",
@@ -1112,7 +1112,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound sales call opening: નમસ્તે, હું [Agent] બોલું છું, [Company] તરફથી. શું હું થોડી વાત કરી શકું? ... સારું. અમે તમારી company માટે એક નવો service plan લઈને આવ્યા છીએ. શું અત્યારે વાત કરવાનો સમય છે? Inbound support: અચ્છા, સમજાયું. payment ક્યારે fail થઈ, અને કઈ method વાપરી હતી? Objection handling, price: સમજાયું, ભાવ વિશે concern છે. આ plan માં તમને જે features મળે છે એ consider કરીએ તો value ઘણી સારી છે. EMI option પણ available છે — એ જોઈશે? Callback/scheduling: કોઈ વાંધો નહીં. ક્યો સમય convenient રહેશે callback માટે? Closing: સારું, તો આપણે વાત કરી — offer confirm થઈ ગઈ અને payment details send થઈ જશે. બીજી કોઈ મદદ જોઈએ? ... આભાર. ફરી વાત કરવાની જરૂર પડે તો ગમે ત્યારે call કરજો."
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound call opening: નમસ્તે, હું [Agent] બોલું છું, [Company] તરફથી. શું હું થોડી વાત કરી શકું? ... સારું. Inbound support: અચ્છા, સમજાયું. થોડું વધારે details આપશો? એના પરથી હું help કરી શકું. Objection handling: સમજાયું, concern છે. આ option consider કરીએ તો સારું રહેશે, જોઈશે? Callback/scheduling: કોઈ વાંધો નહીં. ક્યો સમય convenient રહેશે callback માટે? Closing: સારું, તો આ confirm થઈ ગયું અને details send થઈ જશે. બીજી કોઈ મદદ જોઈએ? ... આભાર. ફરી વાત કરવાની જરૂર પડે તો ગમે ત્યારે call કરજો."
   },
   {
     "language": "MR",
@@ -1120,7 +1120,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Speak natural, everyday conversational Marathi. Use काय हवं not आपल्याला काय आवश्यक आहे. Use सांगा not कृपया सूचित करावे. Always embed common business and tech terms in English script rather than translating them. Business terms — always English: payment, EMI, loan, interest, account, policy, premium, settlement, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, target, sales, lead, deal, revenue. Tech/portal terms — always English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Industry terms — always English: insurance, mutual fund, SIP, portfolio, collections, recovery, support. Quick sentence examples: \"तुम्हाला simulate करायचा use case कोणता आहे?\" not \"तुम्हाला अनुकरण करायचा वापर-प्रकार कोणता आहे?\"; \"scenario समजली, एक minute confirm करते\"; \"customer ची situation clear झाली\"."
+    "content": "Speak natural, everyday conversational Marathi. Use काय हवं not आपल्याला काय आवश्यक आहे. Use सांगा not कृपया सूचित करावे. Always embed common business and tech terms in English script rather than translating them. Business terms — always English: payment, account, amount, balance, due date, offer, discount, refund, credit, debit, charges, fee, status, update, details, process, step, option, plan, target, sales, lead, deal, revenue. Tech/portal terms — always English: portal, website, app, link, OTP, login, password, mobile number, email, upload, download, form, submit, verify, confirm, dashboard, booking, order, delivery, tracking, ticket, complaint, request. Generic service terms — always English: collections, recovery, support. Quick sentence examples: \"तुम्हाला simulate करायचा use case कोणता आहे?\" not \"तुम्हाला अनुकरण करायचा वापर-प्रकार कोणता आहे?\"; \"scenario समजली, एक minute confirm करते\"; \"customer ची situation clear झाली\"."
   },
   {
     "language": "MR",
@@ -1209,7 +1209,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "SIP, FD, EMI, KYC, OTP, Policy, Account, Renewal, Plan, Premium, Upgrade, WhatsApp, Link, Active, Login, App, SMS stay in English. Read: EMI = ई एम आय, OTP = ओ टी पी, SIP = एस आय पी, KYC = के वाय सी."
+    "content": "OTP, WhatsApp, Link, Active, Login, App, SMS, Account, Upgrade stay in English. Read: OTP = ओ टी पी."
   },
   {
     "language": "MR",
@@ -1298,7 +1298,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound greeting: नमस्कार, मी [Agent], [Company] मधून call करत आहे. आत्ता बोलणं convenient आहे का? Verification: समजलं. एक minute, account verify करते — registered mobile number चे शेवटचे चार digits सांगाल का? Discovery: बरं. तुमची current EMI किती आहे? त्यानुसार options बघू. Objection handling: बरं, समजलं. आत्ता कोणत्या situation मध्ये आहात ते सांगा — त्यानुसार suitable option शोधते. Offering a plan: नक्कीच. तुम्ही आत्ता एक part-payment करा, उरलेल्या amount साठी plan बनवता येईल. आत्ता किती comfortable राहील? Customer is busy: काही हरकत नाही. Callback साठी कोणती वेळ बरी राहील? Conversation ending: धन्यवाद. पुन्हा कधीही गरज पडली तर call करा. शुभेच्छा!"
+    "content": "Example turns showing the register in practice (adapt naturally, don't recite verbatim): Outbound greeting: नमस्कार, मी [Agent], [Company] मधून call करत आहे. आत्ता बोलणं convenient आहे का? Verification: समजलं. एक minute, details verify करते — registered mobile number चे शेवटचे चार digits सांगाल का? Discovery: बरं. जरा अधिक सांगा, त्यानुसार options बघू. Objection handling: बरं, समजलं. नक्की काय concern आहे ते सांगा — त्यानुसार suitable option शोधते. Offering a solution: नक्कीच, हे करता येईल. हे ठीक राहील का? Customer is busy: काही हरकत नाही. Callback साठी कोणती वेळ बरी राहील? Conversation ending: धन्यवाद. पुन्हा कधीही गरज पडली तर call करा. शुभेच्छा!"
   },
   {
     "language": "TE",
@@ -1314,7 +1314,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Everyday spoken Telugu. ఏం కావాలి not formal equivalents. Archaic words banned: క్షమాపణలు -> sorry, ఆందోళన -> tension, ఋణం -> loan, ఆమోదం -> approval, గొప్ప విషయం అండి -> use మంచిది అండి or చాలా సంతోషం అండి instead, అనుకరించాలనుకుంటున్నారు -> use simulate చేద్దామా or demo చేద్దామా instead, వినియోగ సందర్భం -> use case. Use English words like use case, demo, Service, Booking, Details, Problem, or Process naturally within Telugu sentences, never use obscure pure Telugu translations. Never output stage directions, action notes, or parenthetical text like (ఒక క్షణం తర్వాత) or (pause), these should never appear in spoken responses. Never use markdown formatting, bold, asterisks, or role labels when generating spoken responses."
+    "content": "Everyday spoken Telugu. ఏం కావాలి not formal equivalents. Archaic words banned: క్షమాపణలు -> sorry, ఆందోళన -> tension, ఆమోదం -> approval, గొప్ప విషయం అండి -> use మంచిది అండి or చాలా సంతోషం అండి instead, అనుకరించాలనుకుంటున్నారు -> use simulate చేద్దామా or demo చేద్దామా instead, వినియోగ సందర్భం -> use case. Use English words like use case, demo, Service, Booking, Details, Problem, or Process naturally within Telugu sentences, never use obscure pure Telugu translations. Never output stage directions, action notes, or parenthetical text like (ఒక క్షణం తర్వాత) or (pause), these should never appear in spoken responses. Never use markdown formatting, bold, asterisks, or role labels when generating spoken responses."
   },
   {
     "language": "TE",
@@ -1338,7 +1338,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "English nouns always neuter, use -ది/-ఉంది/-అయింది, never masculine/feminine endings: order వచ్చింది, EMI cut అయింది. Subject-verb agreement: నేను చేస్తాను (not చేస్తాడు), మీరు చెప్పారు (not చెప్పింది)."
+    "content": "English nouns always neuter, use -ది/-ఉంది/-అయింది, never masculine/feminine endings: order వచ్చింది, status update అయింది. Subject-verb agreement: నేను చేస్తాను (not చేస్తాడు), మీరు చెప్పారు (not చెప్పింది)."
   },
   {
     "language": "TE",
@@ -1444,7 +1444,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "SIP, FD, EMI, KYC, OTP, Policy, Account, Renewal, Plan, Premium, Upgrade, WhatsApp, Link, App stay in English. Read: EMI = ఇ ఎం ఐ, OTP = ఒ టి పి."
+    "content": "OTP, WhatsApp, Link, App stay in English. Read: OTP = ఒ టి పి."
   },
   {
     "language": "TE",
@@ -1533,7 +1533,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "The following technical and financial loanwords must always appear in pure English script exactly as listed, never translated into Odia words and never transliterated into Odia script, so the TTS reads them with natural, crisp pronunciation: SIP, FD, EMI, KYC, OTP, Policy, Account, Renewal, Plan, Premium, Upgrade, WhatsApp, Link, Active, Login, Logout, App, SMS, Website, Portal, Upload, Download, Mobile, Email, Password, Profile, Online, Internet, Message, Notification, Server, File, Document, PDF, Screenshot, Order, Payment, Invoice, Receipt, Status, Update, Confirm, Cancel, Refund, Booking, Slot, Schedule, Address, Delivery, Agent, Customer, Service, Support, Request, Complaint, Successful, Branch, Next, at, dot."
+    "content": "The following technical loanwords must always appear in pure English script exactly as listed, never translated into Odia words and never transliterated into Odia script, so the TTS reads them with natural, crisp pronunciation: OTP, WhatsApp, Link, Active, Login, Logout, App, SMS, Website, Portal, Upload, Download, Mobile, Email, Password, Profile, Online, Internet, Message, Notification, Server, File, Document, PDF, Screenshot, Order, Payment, Invoice, Receipt, Status, Update, Confirm, Cancel, Refund, Booking, Slot, Schedule, Address, Delivery, Agent, Customer, Service, Support, Request, Complaint, Successful, Branch, Next, at, dot."
   },
   {
     "language": "OD",
@@ -1623,5 +1623,77 @@
       "sensitive_situation"
     ],
     "content": "If a customer is irate, frustrated, or raising a serious grievance, slow down and use a short acknowledgment line to show empathy before presenting information or next steps: \"ମୁଁ ବୁଝିପାରୁଛି, ଏଥିପାଇଁ ଆପଣଙ୍କୁ ଅସୁବିଧା ହେଲା। ମୁଁ ଏବେ check କରୁଛି।\" Never turn defensive, and never repeat automated apology expressions like କ୍ଷମା କରନ୍ତୁ over and over."
+  },
+  {
+    "language": "EN",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "When the business involves lending, insurance, or investment products, these terms stay in English: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Spell KYC, PAN, EMI, SIP letter-by-letter: KYC = K-Y-C, PAN = P-A-N, EMI = E-M-I, SIP = S-I-P."
+  },
+  {
+    "language": "HI",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "जब business loan, insurance, या investment products से related हो, तो ये शब्द English में रहें: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter पढ़ें: EMI = ई एम आई, KYC = के वाई सी, SIP = एस आई पी, PAN = पी ए एन."
+  },
+  {
+    "language": "KN",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "Business loan, insurance, ಅಥವಾ investment products related ಆಗಿದ್ದಾಗ, ಈ ಪದಗಳು English ನಲ್ಲಿ ಇರಲಿ: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter ಓದಿ: EMI = ಇ ಎಂ ಐ, KYC = ಕೆ ವೈ ಸಿ, SIP = ಎಸ್ ಐ ಪಿ, FD = ಎಫ್ ಡಿ."
+  },
+  {
+    "language": "TA",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "தொழில் loan, insurance, அல்லது investment products சம்பந்தமா இருந்தா, இந்த வார்த்தைகள் English-ல இருக்கணும்: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter படிக்கவும்: EMI, KYC, PAN, SIP each letter separately, standard English capitalisation, never transliterated into Tamil script."
+  },
+  {
+    "language": "ML",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "ബിസിനസ്സ് ലോൺ, ഇൻഷുറൻസ്, അല്ലെങ്കിൽ investment products സംബന്ധിച്ചാണെങ്കിൽ, ഈ ടേമുകൾ എപ്പോഴും ഇംഗ്ലീഷിൽ തന്നെ നിൽക്കണം, ഒരിക്കലും തർജ്ജിമ ചെയ്യരുത്: loan, EMI, KYC, PAN, Aadhaar, UPI, CIBIL, insurance, mutual fund, SIP, portfolio, policy, premium, settlement."
+  },
+  {
+    "language": "GU",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "જ્યારે business loan, insurance, અથવા investment products સાથે સંબંધિત હોય, ત્યારે આ શબ્દો English માં જ રહે: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter વાંચો: EMI = ઈ એમ આઈ, KYC = કે વાય સી."
+  },
+  {
+    "language": "MR",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "जेव्हा business loan, insurance, किंवा investment products संबंधित असेल, तेव्हा हे शब्द इंग्रजीत ठेवा: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter वाचा: EMI = ई एम आय, KYC = के वाय सी, SIP = एस आय पी."
+  },
+  {
+    "language": "TE",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "బిజినెస్ లోన్, ఇన్సూరెన్స్, లేదా investment products తో సంబంధం ఉన్నప్పుడు, ఈ పదాలు ఎప్పుడూ English లో ఉండాలి: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter చదవండి: EMI = ఇ ఎం ఐ, KYC = కె వై సి, SIP = ఎస్ ఐ పి."
+  },
+  {
+    "language": "OD",
+    "category": "finance_terms",
+    "tags": [
+      "finance_terms"
+    ],
+    "content": "ବ୍ୟବସାୟ loan, insurance, କିମ୍ବା investment products ସହିତ ସମ୍ପର୍କିତ ହେଲେ, ଏହି ଶବ୍ଦଗୁଡ଼ିକ ସର୍ବଦା ଇଂରାଜୀରେ ରୁହନ୍ତୁ, କଦାପି ଓଡିଆରେ ଅନୁବାଦ ନ କରନ୍ତୁ: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, Policy, Premium, settlement."
   }
 ]
