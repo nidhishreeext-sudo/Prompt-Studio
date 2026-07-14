@@ -141,6 +141,7 @@ WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
 CRITICAL REQUIREMENTS:
 - Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant illustrative examples and formatting overhead, never trim reference data.
 - Do not include any business logic — only language/speech rules.
+- NEVER include conversation-flow control, turn-taking mechanics, or node-entry/greeting-sequencing logic (e.g. "on entering this node", "CONTINUE vs INTRODUCE", rules about when to re-greet or when a turn counts as the first turn). That is business/flow logic, not a language rule, even if a source chunk happens to blend the two together. If a chunk mixes flow logic with an actual language rule, extract only the language-relevant portion and silently drop the rest.
 - A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, and every reference vocabulary entry survives, not that every illustrative example and every table's visual formatting is reproduced.
 
 MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated short section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance.
