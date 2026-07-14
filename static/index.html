@@ -149,43 +149,24 @@
 
   /* Model segmented control */
   .model-select {
-    display: flex;
+    appearance: none;
     background: var(--pill-gray-bg);
+    border: 1px solid var(--pill-gray-bg);
     border-radius: 8px;
-    padding: 3px;
-    gap: 2px;
-  }
-
-  .model-option {
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 7px 30px 7px 12px;
     font-size: 12.5px;
     font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.12s ease;
-    white-space: nowrap;
-  }
-
-  .model-option.active {
-    background: var(--surface);
     color: var(--text);
-    box-shadow: var(--shadow-card);
+    cursor: pointer;
+    outline: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'><path d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.4' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
   }
 
-  .model-option .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--text-faint);
+  .model-select:hover {
+    background-color: var(--surface);
   }
-
-  .model-option.active .dot { background: var(--accent); }
 
   .btn {
     display: inline-flex;
@@ -650,9 +631,9 @@
         <svg id="themeIconSun" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.2V2.6M8 13.4V14.8M2.6 8H1.2M14.8 8H13.4M3.5 3.5L4.5 4.5M11.5 11.5L12.5 12.5M12.5 3.5L11.5 4.5M4.5 11.5L3.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         <svg id="themeIconMoon" width="16" height="16" viewBox="0 0 16 16" fill="none" style="display:none;"><path d="M13.5 9.5A5.8 5.8 0 016.5 2.5a5.8 5.8 0 107 7z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
       </button>
-      <div class="model-select" id="modelSelect">
-        <!-- populated by JS -->
-      </div>
+      <select class="model-select" id="modelSelect">
+        <!-- populated by JS with optgroups -->
+      </select>
       <button class="btn btn-primary" id="generateBtn">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1L8.5 5.5L13 7L8.5 8.5L7 13L5.5 8.5L1 7L5.5 5.5L7 1Z" fill="currentColor"/></svg>
         Generate
@@ -821,20 +802,27 @@ async function loadModels() {
     const res = await fetch("/api/models");
     const data = await res.json();
     currentModel = data.default;
-    modelSelectEl.innerHTML = data.models.map(m => `
-      <button class="model-option ${m.id === currentModel ? 'active' : ''}" data-model="${m.id}">
-        <span class="dot"></span>${m.label}
-      </button>
+
+    // Group models by their "group" field (Flash / Pro) in the order they first appear
+    const groups = {};
+    const groupOrder = [];
+    data.models.forEach(m => {
+      const g = m.group || "Flash";
+      if (!groups[g]) { groups[g] = []; groupOrder.push(g); }
+      groups[g].push(m);
+    });
+
+    modelSelectEl.innerHTML = groupOrder.map(g => `
+      <optgroup label="${g}">
+        ${groups[g].map(m => `<option value="${m.id}" ${m.id === currentModel ? "selected" : ""}>${m.label}</option>`).join("")}
+      </optgroup>
     `).join("");
-    modelSelectEl.querySelectorAll(".model-option").forEach(btn => {
-      btn.addEventListener("click", () => {
-        currentModel = btn.dataset.model;
-        modelSelectEl.querySelectorAll(".model-option").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-      });
+
+    modelSelectEl.addEventListener("change", () => {
+      currentModel = modelSelectEl.value;
     });
   } catch (e) {
-    modelSelectEl.innerHTML = `<span style="font-size:12px;color:var(--text-faint);padding:6px 8px;">Models unavailable</span>`;
+    modelSelectEl.innerHTML = `<option>Models unavailable</option>`;
   }
 }
 
@@ -989,7 +977,6 @@ function bindEvents() {
           business_logic: businessLogic,
           language_prompt: languagePrompt,
           language: activeOutputTab,
-          model: currentModel,
         })
       });
       const data = await res.json();
@@ -1001,6 +988,40 @@ function bindEvents() {
     } finally {
       el("reviewBtn").disabled = false;
       el("reviewBtn").textContent = "🔍 Review";
+    }
+  });
+
+  outputBody.addEventListener("click", async (e) => {
+    const applyBtn = e.target.closest("#applyFixBtn");
+    if (!applyBtn) return;
+    if (!lastResult) return;
+    const reviewText = reviewCache[activeOutputTab];
+    if (!reviewText) return;
+    const businessLogic = lastResult.business_logic;
+    const languagePrompt = lastResult.language_prompts[activeOutputTab];
+    applyBtn.disabled = true;
+    applyBtn.textContent = "Applying…";
+    try {
+      const res = await fetch("/api/apply_review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_logic: businessLogic,
+          language_prompt: languagePrompt,
+          review_text: reviewText,
+          language: activeOutputTab,
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Applying the fix failed");
+      lastResult.language_prompts[activeOutputTab] = data.language_prompt;
+      delete reviewCache[activeOutputTab];
+      showToast("Fix applied");
+      renderOutput();
+    } catch (err) {
+      showToast(err.message || "Applying the fix failed");
+      applyBtn.disabled = false;
+      applyBtn.textContent = "✅ Apply Fix";
     }
   });
 }
@@ -1060,7 +1081,10 @@ function renderOutput() {
   const reviewText = reviewCache[activeOutputTab];
   const reviewBanner = reviewText ? `
     <div class="warning-banner" style="background:var(--accent-soft);border-color:var(--accent-soft-border);color:var(--text);">
-      <strong>🔍 AI Review</strong>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <strong>🔍 AI Review</strong>
+        <button id="applyFixBtn" class="btn btn-primary" style="padding:6px 12px;font-size:12px;flex-shrink:0;">✅ Apply Fix</button>
+      </div>
       <div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(reviewText)}</div>
     </div>` : "";
 

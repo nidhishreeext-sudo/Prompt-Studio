@@ -18,15 +18,25 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 SUPPORTED_MODELS = {
     "gemini-2.5-flash": {
         "label": "Gemini 2.5 Flash",
+        "group": "Flash",
         "supports_thinking_level": False,
     },
     "gemini-3.5-flash": {
         "label": "Gemini 3.5 Flash",
+        "group": "Flash",
+        "supports_thinking_level": True,
+    },
+    "gemini-3.1-pro": {
+        "label": "Gemini 3.1 Pro",
+        "group": "Pro",
         "supports_thinking_level": True,
     },
 }
 
 DEFAULT_MODEL = "gemini-2.5-flash"
+# Review (and applying review fixes) benefits more from a stronger model than generation does,
+# since it needs to catch subtle contradictions rather than just reproduce chunk content.
+DEFAULT_REVIEW_MODEL = "gemini-3.1-pro"
 
 
 def _resolve_model(model: str | None) -> str:
@@ -180,13 +190,11 @@ def synthesize_language_prompt(business_logic: str, relevant_chunks: list, langu
 
     full_prompt = f"""{SYNTHESIZER_SYSTEM_PROMPT}
 
-BUSINESS LOGIC CONTEXT (for relevance matching, and for light example adaptation as described below — never reproduce this section itself in the output):
+BUSINESS LOGIC CONTEXT (for relevance only, do not include in output):
 {business_logic[:2000]}
 
 RELEVANT LANGUAGE CHUNKS FOR {language}:
-{chunks_text}
-
-ADAPTING THE few_shot_examples CHUNK SPECIFICALLY: its generic scenario nouns ("what you're looking for", "the details", "a solution") may be lightly reworded using real terms that already appear in the BUSINESS LOGIC CONTEXT above (e.g. swap "what you're looking for" for "which [product/service the business actually offers]"), so the examples feel native to this business. This is a light word-swap only, never invent a fact, number, policy, or specific detail that isn't stated in the business logic. If nothing in the business logic gives an obvious swap, leave the generic wording as-is rather than guessing."""
+{chunks_text}"""
 
     response = client.models.generate_content(
         model=model,
@@ -224,6 +232,34 @@ GENERATED LANGUAGE PROMPT ({language}):
         model=model,
         contents=full_prompt,
         config=_build_config(model, max_output_tokens=1500)
+    )
+    return response.text
+
+
+APPLY_FIX_SYSTEM_PROMPT = """You are given a generated language-specific voice AI prompt, the business logic it should match, and a QA review that lists specific issues found in it.
+
+Revise the language prompt to fix every issue the review raises. Keep everything the review did NOT flag exactly as it already was, do not rewrite, reorganize, or rephrase sections that weren't criticized. Do not remove any existing correct content while fixing the flagged issues. Do not add new sections beyond what's needed to address the review's findings, and do not invent any new specific facts, examples, or vocabulary not already present in the language prompt or clearly implied by the business logic.
+
+Output the corrected language prompt only, no commentary, no explanation of what you changed, no restating of the review."""
+
+
+def apply_review_fixes(business_logic: str, language_prompt: str, review_text: str, language: str, model: str = DEFAULT_REVIEW_MODEL) -> str:
+    model = _resolve_model(model)
+    full_prompt = f"""{APPLY_FIX_SYSTEM_PROMPT}
+
+BUSINESS LOGIC:
+{business_logic}
+
+CURRENT LANGUAGE PROMPT ({language}):
+{language_prompt}
+
+QA REVIEW FINDINGS TO FIX:
+{review_text}"""
+
+    response = client.models.generate_content(
+        model=model,
+        contents=full_prompt,
+        config=_build_config(model, max_output_tokens=8000)
     )
     return response.text
 

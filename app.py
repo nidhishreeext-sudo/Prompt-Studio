@@ -4,10 +4,12 @@ from main import (
     generate_language_prompts_multi,
     resolve_languages,
     review_language_prompt,
+    apply_review_fixes,
     is_flow_json,
     extract_text_from_flow_json,
     SUPPORTED_MODELS,
     DEFAULT_MODEL,
+    DEFAULT_REVIEW_MODEL,
 )
 
 app = Flask(__name__, static_folder="static")
@@ -22,7 +24,7 @@ def index():
 def models():
     """Expose the model list to the frontend so it isn't hardcoded twice."""
     return jsonify({
-        "models": [{"id": k, "label": v["label"]} for k, v in SUPPORTED_MODELS.items()],
+        "models": [{"id": k, "label": v["label"], "group": v.get("group", "Flash")} for k, v in SUPPORTED_MODELS.items()],
         "default": DEFAULT_MODEL,
     })
 
@@ -75,13 +77,29 @@ def review():
     business_logic = data.get("business_logic", "")
     language_prompt = data.get("language_prompt", "")
     language = data.get("language", "")
-    model = data.get("model", DEFAULT_MODEL)
 
     if not business_logic.strip() or not language_prompt.strip():
         return jsonify({"error": "Missing business_logic or language_prompt"}), 400
 
-    review_text = review_language_prompt(business_logic, language_prompt, language, model=model)
-    return jsonify({"review": review_text})
+    # Review always uses the stronger model — catching subtle contradictions matters
+    # more here than matching whatever model the user picked for generation.
+    review_text = review_language_prompt(business_logic, language_prompt, language, model=DEFAULT_REVIEW_MODEL)
+    return jsonify({"review": review_text, "model": DEFAULT_REVIEW_MODEL})
+
+
+@app.route("/api/apply_review", methods=["POST"])
+def apply_review():
+    data = request.json or {}
+    business_logic = data.get("business_logic", "")
+    language_prompt = data.get("language_prompt", "")
+    review_text = data.get("review_text", "")
+    language = data.get("language", "")
+
+    if not business_logic.strip() or not language_prompt.strip() or not review_text.strip():
+        return jsonify({"error": "Missing business_logic, language_prompt, or review_text"}), 400
+
+    fixed_prompt = apply_review_fixes(business_logic, language_prompt, review_text, language, model=DEFAULT_REVIEW_MODEL)
+    return jsonify({"language_prompt": fixed_prompt, "model": DEFAULT_REVIEW_MODEL})
 
 
 if __name__ == "__main__":
