@@ -125,16 +125,18 @@ Merge the chunks into ONE well-organized, natural-reading language prompt — th
 
 WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
 - Every rule must survive, but express it in tight, flowing prose — a short paragraph per rule, not a bullet-catalog of every possible case.
-- NEVER use markdown tables. Any reference data given as a table or list in the source chunks (number words, pronoun forms, etc.) must be rewritten as natural comma-separated prose (e.g. "1 is ಒಂದು, 2 is ಎರಡು, 10 is ಹತ್ತು" not a pipe table).
+- NEVER use markdown tables. Reformat any table into natural comma-separated prose instead (e.g. "1 is ಒಂದು, 2 is ಎರಡು, 10 is ಹತ್ತು" not a pipe table). This is a FORMATTING change only.
+- TWO DIFFERENT THINGS, DO NOT CONFUSE THEM:
+  1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): keep at most 2-3 of the clearest ones per rule. These exist to demonstrate a pattern, not to be an exhaustive catalog.
+  2. ESSENTIAL REFERENCE VOCABULARY (a number-word lookup table, digit-by-digit letter readings, a fixed list of preserved English terms): reproduce this COMPLETELY, every entry, just reformatted out of table syntax into prose. This is not illustrative, it is vocabulary the agent needs to actually speak arbitrary numbers or terms correctly at runtime — especially critical for languages with irregular number formation where the model cannot reliably derive missing entries on its own. Never trim, sample, or abbreviate a reference vocabulary list with "etc." or similar.
 - Use simple, short section headers (### Colloquial Speech, ### Numbers, ### Backchannels) — not numbered mega-sections, not sub-headers nested three levels deep.
-- For examples: keep at most 2-3 of the clearest ✓/✗ pairs or sample sentences per rule. If a chunk lists ten examples of the same pattern, pick the two or three that best illustrate it — do not reproduce every single one. The point is that a reader instantly gets the rule, not that every source example survives verbatim.
 - Do not restate the same rule in multiple places or under multiple headers. If two chunks overlap, merge them into one clean statement.
 - Do not add meta-commentary, headers-about-headers, or explanations of why a rule exists — state the rule and move on.
 
 CRITICAL REQUIREMENTS:
-- Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant examples and formatting overhead.
+- Preserve every distinct rule and exception mentioned in the chunks — do not drop substance, only trim redundant illustrative examples and formatting overhead, never trim reference vocabulary.
 - Do not include any business logic — only language/speech rules.
-- A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, not that every example and every table row is reproduced.
+- A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, and every reference vocabulary entry survives, not that every illustrative example and every table's visual formatting is reproduced.
 
 MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated short section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance.
 
@@ -335,6 +337,7 @@ LANGUAGE_NAME_MAP = {
     "gujarati": "GU", "gujrati": "GU", "gu": "GU",
     "marathi": "MR", "mr": "MR",
     "telugu": "TE", "te": "TE",
+    "odia": "OD", "oriya": "OD", "od": "OD",
 }
 
 
