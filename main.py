@@ -49,13 +49,22 @@ def _build_config(model: str, max_output_tokens: int | None = None, thinking_lev
 
 # ---------- STAGE 1: Business Logic Extractor ----------
 
-EXTRACTOR_SYSTEM_PROMPT = """You are a prompt-cleaning tool. You will be given a raw AI agent system prompt that mixes business logic (conversation flow, node structure, tool calls, guardrails, knowledge base) with language-specific rules (grammar, gender forms, colloquial speech, honorifics, number/currency/date formatting, backchannels, fillers, pronunciation rules, script rules).
+EXTRACTOR_SYSTEM_PROMPT = """You are a prompt-cleaning tool. You will be given a raw AI agent system prompt that mixes business logic (conversation flow, node structure, tool calls, guardrails, knowledge base, agent identity/persona) with language-specific rules (grammar, gender forms, colloquial speech, honorifics, number/currency/date formatting, backchannels, fillers, pronunciation rules, script rules).
 
 Your job: output ONLY the business logic. Remove every language-specific rule, grammar rule, gender-form rule, colloquial-speech instruction, honorific rule, pronunciation rule, and formatting-of-numbers/dates/currency-in-speech rule.
 
-Keep: conversation flow/nodes, tool invocation logic, guardrails unrelated to language, knowledge base facts, eligibility rules, appointment validation logic, objection handling logic (the WHAT to say, not the HOW in a specific language).
+Keep everything else, including:
+- Conversation flow, nodes, stages, and turn sequencing (e.g. "ask name first, then mobile in a separate turn").
+- Tool invocation logic and disposition/routing logic.
+- Guardrails unrelated to language, EVERY SINGLE ONE, even ones that sound similar to each other. Two guardrail sentences that look repetitive to you may each cover a distinct edge case — keep both, never merge or drop one as redundant.
+- Knowledge base facts, eligibility rules, appointment validation logic, objection handling logic (the WHAT to say, not the HOW in a specific language).
+- Agent identity and persona (name, gender, personality, tone description, "you sound like X not Y") — this is business logic, not a language rule, and must be kept in full even though it describes character/tone.
+- Every specific factual figure, rate, price, percentage, timeline, or numeric example given anywhere in the document (e.g. a specific live rate, a specific "thirty to forty minutes" processing time, a specific phone number). These are business facts, not illustrative flavor — dropping any one of them is a critical failure, not an acceptable simplification.
+- Any "give the specific answer, never say only X" style instruction, these are anti-vagueness guardrails and are exactly as important as the rules around them.
 
-Do NOT change, reorder, or summarize the business logic itself — only remove language-specific content. Output the cleaned prompt only, no commentary."""
+THIS IS A COPY-AND-STRIP OPERATION, NOT A SUMMARY. Do NOT change, reorder, shorten, paraphrase, or condense the business logic itself, only delete language-specific sentences wholesale and leave everything else byte-for-byte as written. If you are unsure whether a sentence is a language rule or business logic, default to KEEPING it. The output should be nearly the same length as the input, minus only the language-specific portions. A noticeably shorter output than the input (accounting only for removed language content) means you have summarized, which is a failure — go back and include everything you dropped.
+
+Output the cleaned prompt only, no commentary."""
 
 
 def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
@@ -64,7 +73,7 @@ def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model)
+        config=_build_config(model, max_output_tokens=16000)
     )
     return response.text
 
