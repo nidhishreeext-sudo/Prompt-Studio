@@ -29,14 +29,24 @@ PROTECTED_INVARIANTS = [
             r"read.{0,20}pin.{0,20}(as a|as one|whole)\s*number",
             r"pin\s*code.{0,30}(natural|spoken)\s*number\s*word",
         ],
-        "must_contain_any": [r"digit[\s-]?by[\s-]?digit"],
+        # Broadened: natural phrasing legitimately varies across chunks/languages
+        # ("digit by digit", "one digit at a time", "each digit a separate
+        # spoken word") — all mean the same rule, so all must be recognized,
+        # not just the single literal phrase "digit by digit".
+        "must_contain_any": [
+            r"digit[\s-]?by[\s-]?digit",
+            r"(one|each|every)\s+digit",
+        ],
         "message": "PIN codes must always be confirmed digit-by-digit — never as a natural spoken number or whole value.",
     },
     {
         "name": "phone_number_digit_by_digit",
         "applies_to_tags": {"phone_number"},
         "forbidden_patterns": [r"phone.{0,30}(natural|spoken)\s*number\s*word"],
-        "must_contain_any": [r"digit[\s-]?by[\s-]?digit"],
+        "must_contain_any": [
+            r"digit[\s-]?by[\s-]?digit",
+            r"(one|each|every)\s+digit",
+        ],
         "message": "Phone/mobile numbers must always be read digit-by-digit — never as a natural spoken number.",
     },
     {
@@ -68,9 +78,8 @@ PROTECTED_INVARIANTS = [
     {
         # Disabled by default (must_contain_any left empty) — this rule assumed
         # every business needs weekday-paired dates, which isn't true for all
-        # use cases (e.g. Muthoot's date chunks never mention weekday pairing
-        # and don't need to). Fill must_contain_any back in only if your
-        # business logic actually requires weekday pairing for dates.
+        # use cases. Fill must_contain_any back in only if your business logic
+        # actually requires weekday pairing for dates.
         "name": "dates_paired_with_weekday",
         "applies_to_tags": {"dates"},
         "forbidden_patterns": [],
