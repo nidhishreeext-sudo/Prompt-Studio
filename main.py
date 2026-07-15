@@ -121,9 +121,33 @@ ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "c
                    "no_echo"]
 
 
+_NEGATION_CUES = [
+    "not supported", "not support", "do not support", "does not support", "doesn't support",
+    "not offer", "does not offer", "doesn't offer", "not offered", "not available",
+    "excluded", "out of scope", "unsupported", "not permitted", "not provide",
+    "does not provide", "doesn't provide", "not applicable", "no longer support",
+]
+
+
+def _has_nearby_negation(text_lower: str, start: int, end: int, window: int = 80) -> bool:
+    """Checks a window of text around a keyword match (both before and after, since
+    an exclusion clause can precede the keyword — "out of scope (... gold loan ...)" —
+    or follow it — "gold loans ... are not supported")."""
+    context = text_lower[max(0, start - window):min(len(text_lower), end + window)]
+    return any(cue in context for cue in _NEGATION_CUES)
+
+
 def _keyword_present(text_lower: str, keyword: str) -> bool:
-    """True only if `keyword` appears as a genuine whole word/phrase in text_lower,
-    not merely as a substring buried inside a longer unrelated word.
+    """True only if `keyword` appears as a genuine whole word/phrase, AND at least one
+    occurrence isn't sitting inside a negation/exclusion clause.
+
+    This matters because a business often explicitly lists things it does NOT offer
+    (e.g. "gold loans... are not supported", "out of scope (... gold loan ...)"). A
+    business saying it explicitly does NOT do lending should not have finance-vocabulary
+    chunks activated just because the word "loan" appears in that exclusion sentence —
+    only a genuine affirmative mention of the category should trigger it. If a keyword
+    appears multiple times and at least one mention is a real, non-negated usage, the
+    tag still correctly activates.
 
     Uses letter-adjacency (not \\b) as the boundary check on purpose: \\b treats
     underscores as word characters, which would fail to match e.g. "amount"
@@ -132,7 +156,10 @@ def _keyword_present(text_lower: str, keyword: str) -> bool:
     correctly matching "amount" next to underscores, digits, or punctuation.
     """
     pattern = r'(?<![a-z])' + re.escape(keyword) + r'(?![a-z])'
-    return re.search(pattern, text_lower) is not None
+    for m in re.finditer(pattern, text_lower):
+        if not _has_nearby_negation(text_lower, m.start(), m.end()):
+            return True
+    return False
 
 
 def match_relevant_chunks(business_logic: str, language: str, all_chunks: list) -> list:
