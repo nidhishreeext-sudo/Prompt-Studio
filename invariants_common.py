@@ -35,7 +35,7 @@ PROTECTED_INVARIANTS = [
         # not just the single literal phrase "digit by digit".
         "must_contain_any": [
             r"digit[\s-]?by[\s-]?digit",
-            r"(one|each|every)\s+digit",
+            r"(one|each|every)(\s+\w+)?\s+digit",
         ],
         "message": "PIN codes must always be confirmed digit-by-digit — never as a natural spoken number or whole value.",
     },
@@ -45,7 +45,7 @@ PROTECTED_INVARIANTS = [
         "forbidden_patterns": [r"phone.{0,30}(natural|spoken)\s*number\s*word"],
         "must_contain_any": [
             r"digit[\s-]?by[\s-]?digit",
-            r"(one|each|every)\s+digit",
+            r"(one|each|every)(\s+\w+)?\s+digit",
         ],
         "message": "Phone/mobile numbers must always be read digit-by-digit — never as a natural spoken number.",
     },

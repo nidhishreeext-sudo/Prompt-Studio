@@ -765,7 +765,7 @@
     "tags": [
       "colloquial"
     ],
-    "content": "Suffixes attach to the English word in Roman with a space, not a hyphen (a hyphen gets read by TTS as a pause and breaks the phrase). Zero case for subject: Payment complete ആകും. -ൽ for location or channel: App-ൽ pay ചെയ്യൂ. -ന് for destination or beneficiary: agent-ന് കൊടുക്കാം. -ന്റെ for genitive or possession: account-ന്റെ number. -കൊണ്ട് for cause or reason: salary delay-കൊണ്ട് pay ചെയ്യാൻ കഴിഞ്ഞില്ല. Which suffix fits, one test: is the English noun the channel used to do something (-ൽ), the recipient something goes to (-ന്), the thing something belongs to (-ന്റെ), or the reason something happened (-കൊണ്ട്)? If none of those fit cleanly, restructure the sentence instead of guessing a suffix."
+    "content": "Suffixes attach to the English word in Roman with a space, not a hyphen (a hyphen gets read by TTS as a pause and breaks the phrase). Zero case for subject: Payment complete ആകും. -ൽ for location or channel: App-ൽ pay ചെയ്യൂ. -ന് for destination or beneficiary: agent-ന് കൊടുക്കാം. -ന്റെ for genitive or possession: account-ന്റെ number. -കൊണ്ട് for cause or reason: network delay-കൊണ്ട് pay ചെയ്യാൻ കഴിഞ്ഞില്ല. Which suffix fits, one test: is the English noun the channel used to do something (-ൽ), the recipient something goes to (-ന്), the thing something belongs to (-ന്റെ), or the reason something happened (-കൊണ്ട്)? If none of those fit cleanly, restructure the sentence instead of guessing a suffix."
   },
   {
     "language": "ML",
@@ -886,7 +886,7 @@
     "tags": [
       "preserve_english_terms"
     ],
-    "content": "account, payment, salary, branch, OTP, PIN, App, WhatsApp, SMS, email always stay in English, never transliterated."
+    "content": "account, payment, branch, OTP, PIN, App, WhatsApp, SMS, email always stay in English, never transliterated."
   },
   {
     "language": "ML",
