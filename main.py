@@ -26,7 +26,7 @@ SUPPORTED_MODELS = {
         "group": "Flash",
         "supports_thinking_level": True,
     },
-    "gemini-3.1-pro": {
+    "gemini-3.1-pro-preview": {
         "label": "Gemini 3.1 Pro",
         "group": "Pro",
         "supports_thinking_level": True,
@@ -36,7 +36,7 @@ SUPPORTED_MODELS = {
 DEFAULT_MODEL = "gemini-2.5-flash"
 # Review (and applying review fixes) benefits more from a stronger model than generation does,
 # since it needs to catch subtle contradictions rather than just reproduce chunk content.
-DEFAULT_REVIEW_MODEL = "gemini-3.1-pro"
+DEFAULT_REVIEW_MODEL = "gemini-3.1-pro-preview"
 
 
 def _resolve_model(model: str | None) -> str:
