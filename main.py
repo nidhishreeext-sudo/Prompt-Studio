@@ -45,16 +45,17 @@ def _resolve_model(model: str | None) -> str:
     return DEFAULT_MODEL
 
 
-def _build_config(model: str, max_output_tokens: int | None = None, thinking_level: str = "low") -> dict:
-    """Build a GenerateContentConfig dict, only attaching thinking_config for models that support it."""
-    config = {"temperature": 0}
+def _build_config(model: str, max_output_tokens: int | None = None, thinking_level: str = "low") -> types.GenerateContentConfig:
+    """Build a proper GenerateContentConfig object (not a plain dict) — newer SDK
+    versions require the typed object here rather than auto-converting a dict."""
+    kwargs = {"temperature": 0}
     if max_output_tokens:
-        config["max_output_tokens"] = max_output_tokens
+        kwargs["max_output_tokens"] = max_output_tokens
 
     if SUPPORTED_MODELS[model]["supports_thinking_level"]:
-        config["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
 
-    return config
+    return types.GenerateContentConfig(**kwargs)
 
 
 # ---------- STAGE 1: Business Logic Extractor ----------

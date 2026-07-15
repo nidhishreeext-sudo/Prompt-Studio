@@ -15,6 +15,16 @@ from main import (
 app = Flask(__name__, static_folder="static")
 
 
+@app.errorhandler(Exception)
+def handle_any_error(e):
+    """Catch-all so the frontend always gets JSON back, never Flask's default
+    HTML error page — that HTML is what causes 'Unexpected token <' on the
+    frontend when something breaks server-side (bad API key, SDK error, etc.)."""
+    import traceback
+    traceback.print_exc()  # still shows the real traceback in Render logs
+    return jsonify({"error": str(e)}), 500
+
+
 @app.route("/")
 def index():
     return send_from_directory("static", "index.html")
