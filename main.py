@@ -91,7 +91,7 @@ def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=16000)
+        config=_build_config(model, max_output_tokens=32000)
     )
     return response.text
 
@@ -235,7 +235,7 @@ RELEVANT LANGUAGE CHUNKS FOR {language}:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=8000)
+        config=_build_config(model, max_output_tokens=16000)
     )
     return response.text
 
@@ -295,7 +295,7 @@ QA REVIEW FINDINGS TO FIX:
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=8000)
+        config=_build_config(model, max_output_tokens=16000)
     )
     return response.text
 
@@ -492,7 +492,7 @@ def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MO
     response = client.models.generate_content(
         model=model,
         contents=full_prompt,
-        config=_build_config(model, max_output_tokens=4000)
+        config=_build_config(model, max_output_tokens=8000)
     )
     return response.text.strip()
 
