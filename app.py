@@ -78,6 +78,22 @@ def generate():
     if flow_json:
         per_language_instructions = extract_per_language_node_instructions(flow_json)
         custom_notes_by_language = extract_custom_notes_multi(per_language_instructions, model=model)
+
+        # Some business-specific facts are stated ONLY once, at the global prompt level,
+        # and never repeated inside individual language nodes — a per-language node often
+        # focuses purely on that language's own grammar/style and assumes the global facts
+        # apply universally without needing to restate them. Extracting only from per-node
+        # text meant any language whose node didn't happen to repeat a global fact got none
+        # of it, even though it's exactly as mandatory for that language as any other. This
+        # closes that gap by pulling from the global prompt too and merging it into every
+        # requested language's notes, regardless of what that language's own node contains.
+        global_prompt_text = (flow_json.get("data", {}) or {}).get("prompt", "") or ""
+        global_custom_notes = extract_custom_language_notes(global_prompt_text, model=model) if global_prompt_text.strip() else ""
+        if global_custom_notes:
+            for lang in languages:
+                existing = custom_notes_by_language.get(lang, "")
+                custom_notes_by_language[lang] = (existing + "\n\n" + global_custom_notes).strip() if existing else global_custom_notes
+
         raw_prompt = extract_text_from_flow_json(flow_json)
         if not raw_prompt.strip():
             return jsonify({"error": "Flow JSON was recognized but contained no usable prompt text"}), 400
