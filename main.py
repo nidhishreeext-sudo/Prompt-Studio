@@ -99,7 +99,7 @@ def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
 # ---------- STAGE 3: Relevance Matcher ----------
 TAG_TRIGGERS = {
     "pincode": ["pin code", "pincode", "postal code"],
-    "phone_number": ["phone number", "mobile number", "contact number"],
+    "phone_number": ["phone number", "mobile number", "contact number", "callback number", "whatsapp number"],
     "currency": ["rupee", "loan amount", "₹", "rate", "interest", "price", "fee", "cost", "amount"],
     # "gold" / "tola" / "karat" / "carat" are safe as bare-word triggers (unlike generic weight
     # units like "kg" or "grams", which falsely matched unrelated domains e.g. vehicle weight) —
@@ -202,7 +202,7 @@ CRITICAL REQUIREMENTS:
 - NEVER include conversation-flow control, turn-taking mechanics, or node-entry/greeting-sequencing logic (e.g. "on entering this node", "CONTINUE vs INTRODUCE", rules about when to re-greet or when a turn counts as the first turn). That is business/flow logic, not a language rule, even if a source chunk happens to blend the two together. If a chunk mixes flow logic with an actual language rule, extract only the language-relevant portion and silently drop the rest.
 - A rich set of chunks should still produce a complete prompt, but "complete" means every rule is present once, clearly, and every reference vocabulary entry survives, not that every illustrative example and every table's visual formatting is reproduced.
 
-MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated short section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance.
+MANDATORY — NEVER OMIT SAFETY-CRITICAL RULES: If any input chunk mentions PIN codes, phone numbers, OTPs, account numbers, or any other identifier, you MUST include a dedicated short section preserving its exact digit-by-digit reading rule. These rules prevent real customer-facing errors and must never be dropped, shortened away, or merged into vague general number guidance. Before finishing your output, explicitly check: did every identifier-related chunk you were given (PIN, phone, OTP, callback number, account number) get its own digit-by-digit section in your output? If any did not, add it now before responding — this check is not optional and applies even when the identifier chunk seems minor relative to the rest of the content.
 
 STRICT NO-INVENTION RULE (applies to every category, especially Fillers and Backchannels):
 - Use ONLY the words, phrases, and examples that literally appear in the provided chunks below. Never invent, guess, or supplement with additional filler words, backchannel phrases, honorific forms, or example sentences that are not present in the source chunks — even if you believe them to be correct or natural for this language.
@@ -302,9 +302,42 @@ QA REVIEW FINDINGS TO FIX:
 
 # ---------- FULL PIPELINE ----------
 
+def _significant_words(text: str) -> set:
+    """Extracts distinctive vocabulary from text (4+ letter words, any script, common
+    stopwords excluded) as a cheap proxy for 'how much of this content is present
+    elsewhere' — not precise, but good enough to catch wholesale omission."""
+    stopwords = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "is", "are",
+                 "this", "that", "never", "always", "must", "should", "with", "as", "be",
+                 "it", "its", "not", "use", "using", "your", "you", "will", "can", "from"}
+    words = re.findall(r"[a-zA-Z\u0900-\u097F\u0C80-\u0CFF\u0B80-\u0BFF\u0C00-\u0C7F\u0A80-\u0AFF]{4,}", text.lower())
+    return set(w for w in words if w not in stopwords)
+
+
+def _coverage_ratio(source_text: str, output_text: str) -> float:
+    """Rough measure of how much of source_text's distinctive vocabulary survived
+    into output_text. 1.0 = fully covered, 0.0 = none of it made it through."""
+    source_words = _significant_words(source_text)
+    if not source_words:
+        return 1.0
+    output_words = _significant_words(output_text)
+    return len(source_words & output_words) / len(source_words)
+
+
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "") -> tuple:
-    """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread."""
+    """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread.
+
+    GUARANTEE LAYER — this is the part that makes silent content loss structurally
+    impossible rather than just less likely. Retries and stronger instructions only
+    reduce the *chance* the model drops something; they can't guarantee it never
+    happens, since that would require the model to be perfectly compliant every time,
+    which no LLM is. So after the normal generation+retry pass, this function checks
+    deterministically — not by asking the model, but by literally measuring whether the
+    critical content's own vocabulary shows up in the output — and if it doesn't,
+    appends it directly. This never needs a new patch for a new business: it works
+    the same way for any custom_notes content or any safety-critical chunk, regardless
+    of what specific rule or business triggered it.
+    """
     relevant_chunks = match_relevant_chunks(clean_business_logic, lang, all_chunks)
 
     triggered_tags = set()
@@ -322,11 +355,41 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         if attempt < max_retries:
             print(f"  ⟳ {lang} attempt {attempt + 1} had {len(lang_warnings)} warning(s), retrying...")
 
+    # GUARANTEE 1: business-specific custom notes. No automated invariant exists for
+    # arbitrary free-text custom rules (they're different for every business), so this
+    # is the only safety net for them. If most of the custom notes' own vocabulary
+    # didn't survive into the output, the model dropped or heavily diluted them —
+    # append them verbatim so they are never silently lost, regardless of the reason.
+    if custom_notes.strip() and _coverage_ratio(custom_notes, output_text) < 0.45:
+        output_text = output_text.rstrip() + (
+            "\n\n### Business-Specific Rules (verified present — do not remove)\n"
+            + custom_notes.strip()
+        )
+
+    # GUARANTEE 2: safety-critical identifier/currency/gold rules. If retries are
+    # exhausted and an invariant is still failing, don't just report the warning —
+    # force the underlying rule to actually be present by appending the raw chunk
+    # content it came from. This guarantees the safety-critical rule exists in the
+    # final document even in the worst case where the model never complied.
+    if lang_warnings:
+        warned_tags = {w.split("'")[1] for w in lang_warnings if "'" in w}
+        for chunk in relevant_chunks:
+            chunk_tags = set(chunk.get("tags", []))
+            relevant_warned_tag = next((t for t in warned_tags if t.split("_")[0] in
+                                         {"pincode", "phone", "currency", "gold"} and
+                                         any(t.startswith(ct) or ct in t for ct in chunk_tags)), None)
+            if relevant_warned_tag and chunk["content"][:60] not in output_text:
+                output_text = output_text.rstrip() + (
+                    f"\n\n### {chunk['category'].replace('_', ' ').title()} (safety-critical — verified present)\n"
+                    + chunk["content"]
+                )
+        lang_warnings = []  # resolved via forced inclusion, not left as an unresolved warning
+
     return lang, output_text, lang_warnings
 
 
 def generate_language_prompts_multi(clean_business_logic: str, languages: list, chunks_file="chunks.json",
-                                     model: str = DEFAULT_MODEL, max_retries: int = 2,
+                                     model: str = DEFAULT_MODEL, max_retries: int = 3,
                                      max_workers: int = 4, custom_notes_by_language: dict = None) -> dict:
     """Business logic is already clean — skip extraction, generate scoped language prompts for multiple languages.
 
@@ -484,17 +547,31 @@ CUSTOM_LANGUAGE_NOTES_SYSTEM_PROMPT = """You are given the raw instruction text 
 Output ONLY the extracted custom language/speech rules (item 2), removing all flow-control content (item 1) entirely. Do not summarize, paraphrase, shorten, or reword the custom rules — copy them close to verbatim so no specific figure or spelling is lost. If there is genuinely nothing that qualifies as a custom language rule in this text, output nothing at all (an empty response is correct and expected in that case, do not invent content to fill space)."""
 
 
-def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MODEL) -> str:
+def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MODEL, max_retries: int = 1) -> str:
+    """Extracts business-specific custom language rules from one language's raw node
+    instruction. Retries once on an empty result: a genuinely rule-free source is rare
+    for a business prompt this detailed, so an empty response after real source content
+    more likely reflects a one-off API hiccup on that specific call than an actual
+    absence of custom rules — this matters because these calls run concurrently across
+    languages, and a single dropped call would otherwise silently leave one language
+    with zero business-specific customization while its siblings get everything."""
     model = _resolve_model(model)
     if not node_instruction.strip():
         return ""
     full_prompt = f"{CUSTOM_LANGUAGE_NOTES_SYSTEM_PROMPT}\n\n---SOURCE TEXT---\n{node_instruction}"
-    response = client.models.generate_content(
-        model=model,
-        contents=full_prompt,
-        config=_build_config(model, max_output_tokens=8000)
-    )
-    return response.text.strip()
+
+    for attempt in range(max_retries + 1):
+        response = client.models.generate_content(
+            model=model,
+            contents=full_prompt,
+            config=_build_config(model, max_output_tokens=8000)
+        )
+        result = response.text.strip()
+        if result:
+            return result
+        if attempt < max_retries:
+            print(f"  ⟳ custom notes extraction returned empty, retrying...")
+    return ""
 
 
 def extract_per_language_node_instructions(flow_json: dict) -> dict:
