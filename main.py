@@ -109,8 +109,14 @@ TAG_TRIGGERS = {
     "time_pronunciation": ["appointment", "callback", "schedule", "time", "o'clock", "working hours",
                             "office hours", "morning", "afternoon", "evening", "reschedul"],
     "branch_names": ["branch", "location", "nearest"],
-    "finance_terms": ["loan", "emi", "kyc", "insurance", "mutual fund", "sip", "portfolio",
-                       "pan card", "aadhaar", "cibil", "credit score", "interest rate",
+    # Split from a single "finance_terms" trigger: Aadhaar/PAN are generic identity-document
+    # references that show up across many verification-heavy businesses (gold buying, real
+    # estate, subscriptions) regardless of whether that business does any lending or insurance
+    # at all — bundling them with EMI/loan/insurance vocabulary meant a business that only
+    # needed "Aadhaar as an ID proof" got a full loan/insurance vocabulary dump it never needed.
+    "identity_documents": ["aadhaar", "pan card", "pan number"],
+    "lending_insurance_terms": ["loan", "emi", "kyc", "insurance", "mutual fund", "sip", "portfolio",
+                       "cibil", "credit score", "interest rate",
                        "insurance premium", "insurance policy", "nbfc", "gold loan",
                        "personal loan", "home loan"],
 }
@@ -385,7 +391,37 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
                 )
         lang_warnings = []  # resolved via forced inclusion, not left as an unresolved warning
 
+    # GUARANTEE 3: automatic semantic review and correction, run on every generation,
+    # not as an opt-in button. Word-overlap checks (guarantees 1 and 2) are fast and
+    # deterministic but blind to meaning — they can't tell "escalation was paraphrased
+    # well" from "escalation is missing", and testing confirmed those cases score too
+    # similarly to threshold safely. A model that actually reads the output for meaning
+    # can tell the difference, and catches classes of problem no keyword check ever
+    # could: a wrong language mentioned where it shouldn't be, a whole category quietly
+    # dropped, vocabulary that doesn't belong for this business. This runs with the
+    # stronger review model regardless of which model generated the draft, since
+    # catching subtle problems matters more here than matching the generation model.
+    review_text = review_language_prompt(clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL)
+    if _review_found_issues(review_text):
+        output_text = apply_review_fixes(clean_business_logic, output_text, review_text, lang, model=DEFAULT_REVIEW_MODEL)
+
     return lang, output_text, lang_warnings
+
+
+def _review_found_issues(review_text: str) -> bool:
+    """True if the review actually flagged something, false if it's a clean-bill-of-health
+    response. The reviewer is instructed to say so in one line when nothing is wrong, so a
+    short response containing one of these phrases (and no bullet-style findings) means
+    skip the fix step — there's nothing to correct and re-running synthesis on a clean
+    prompt only risks introducing a new problem where there wasn't one."""
+    if not review_text or not review_text.strip():
+        return False
+    lowered = review_text.lower()
+    clean_signals = ["nothing wrong", "no issues", "no gaps", "looks good", "looks fine",
+                      "no missing", "everything is covered", "no problems found", "no concerns"]
+    is_short = len(review_text.strip()) < 200
+    has_clean_signal = any(sig in lowered for sig in clean_signals)
+    return not (is_short and has_clean_signal)
 
 
 def generate_language_prompts_multi(clean_business_logic: str, languages: list, chunks_file="chunks.json",

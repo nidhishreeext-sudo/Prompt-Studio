@@ -1626,74 +1626,146 @@
   },
   {
     "language": "EN",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "When the business involves lending, insurance, or investment products, these terms stay in English: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Spell KYC, PAN, EMI, SIP letter-by-letter: KYC = K-Y-C, PAN = P-A-N, EMI = E-M-I, SIP = S-I-P."
+    "content": "Aadhaar and PAN stay in English even when spoken about generally, since they are standard identity document names. Spell PAN letter-by-letter: P-A-N."
+  },
+  {
+    "language": "EN",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "When the business involves lending, insurance, or investment products, these terms stay in English: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Spell KYC, EMI, SIP letter-by-letter: KYC = K-Y-C, EMI = E-M-I, SIP = S-I-P."
   },
   {
     "language": "HI",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "जब business loan, insurance, या investment products से related हो, तो ये शब्द English में रहें: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter पढ़ें: EMI = ई एम आई, KYC = के वाई सी, SIP = एस आई पी, PAN = पी ए एन."
+    "content": "Aadhaar और PAN हमेशा English में रहें, ये standard identity document के नाम हैं। Letter by letter पढ़ें: PAN = पी ए एन."
+  },
+  {
+    "language": "HI",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "जब business loan, insurance, या investment products से related हो, तो ये शब्द English में रहें: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter पढ़ें: EMI = ई एम आई, KYC = के वाई सी, SIP = एस आई पी."
   },
   {
     "language": "KN",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "Business loan, insurance, ಅಥವಾ investment products related ಆಗಿದ್ದಾಗ, ಈ ಪದಗಳು English ನಲ್ಲಿ ಇರಲಿ: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter ಓದಿ: EMI = ಇ ಎಂ ಐ, KYC = ಕೆ ವೈ ಸಿ, SIP = ಎಸ್ ಐ ಪಿ, FD = ಎಫ್ ಡಿ."
+    "content": "Aadhaar ಮತ್ತು PAN ಯಾವಾಗಲೂ English ನಲ್ಲಿ ಇರಲಿ, ಇವು standard identity document ಹೆಸರುಗಳು. Letter by letter ಓದಿ: PAN = ಪಿ ಎ ಎನ್."
+  },
+  {
+    "language": "KN",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "Business loan, insurance, ಅಥವಾ investment products related ಆಗಿದ್ದಾಗ, ಈ ಪದಗಳು English ನಲ್ಲಿ ಇರಲಿ: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter ಓದಿ: EMI = ಇ ಎಂ ಐ, KYC = ಕೆ ವೈ ಸಿ, SIP = ಎಸ್ ಐ ಪಿ, FD = ಎಫ್ ಡಿ."
   },
   {
     "language": "TA",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "தொழில் loan, insurance, அல்லது investment products சம்பந்தமா இருந்தா, இந்த வார்த்தைகள் English-ல இருக்கணும்: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter படிக்கவும்: EMI, KYC, PAN, SIP each letter separately, standard English capitalisation, never transliterated into Tamil script."
+    "content": "Aadhaar மற்றும் PAN எப்போதும் English-ல இருக்கணும், இவை standard identity document பெயர்கள். Letter by letter படிக்கவும்: PAN, each letter separately, standard English capitalisation, never transliterated into Tamil script."
+  },
+  {
+    "language": "TA",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "தொழில் loan, insurance, அல்லது investment products சம்பந்தமா இருந்தா, இந்த வார்த்தைகள் English-ல இருக்கணும்: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter படிக்கவும்: EMI, KYC, SIP each letter separately, standard English capitalisation, never transliterated into Tamil script."
   },
   {
     "language": "ML",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "ബിസിനസ്സ് ലോൺ, ഇൻഷുറൻസ്, അല്ലെങ്കിൽ investment products സംബന്ധിച്ചാണെങ്കിൽ, ഈ ടേമുകൾ എപ്പോഴും ഇംഗ്ലീഷിൽ തന്നെ നിൽക്കണം, ഒരിക്കലും തർജ്ജിമ ചെയ്യരുത്: loan, EMI, KYC, PAN, Aadhaar, UPI, CIBIL, insurance, mutual fund, SIP, portfolio, policy, premium, settlement."
+    "content": "Aadhaar, PAN എന്നിവ എപ്പോഴും ഇംഗ്ലീഷിൽ തന്നെ നിൽക്കണം, ഇവ standard identity document പേരുകളാണ്, ഒരിക്കലും തർജ്ജിമ ചെയ്യരുത്."
+  },
+  {
+    "language": "ML",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "ബിസിനസ്സ് ലോൺ, ഇൻഷുറൻസ്, അല്ലെങ്കിൽ investment products സംബന്ധിച്ചാണെങ്കിൽ, ഈ ടേമുകൾ എപ്പോഴും ഇംഗ്ലീഷിൽ തന്നെ നിൽക്കണം, ഒരിക്കലും തർജ്ജിമ ചെയ്യരുത്: loan, EMI, KYC, UPI, CIBIL, insurance, mutual fund, SIP, portfolio, policy, premium, settlement."
   },
   {
     "language": "GU",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "જ્યારે business loan, insurance, અથવા investment products સાથે સંબંધિત હોય, ત્યારે આ શબ્દો English માં જ રહે: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter વાંચો: EMI = ઈ એમ આઈ, KYC = કે વાય સી."
+    "content": "Aadhaar અને PAN હંમેશા English માં જ રહે, આ standard identity document ના નામ છે. Letter by letter વાંચો: PAN = પી એ એન."
+  },
+  {
+    "language": "GU",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "જ્યારે business loan, insurance, અથવા investment products સાથે સંબંધિત હોય, ત્યારે આ શબ્દો English માં જ રહે: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter વાંચો: EMI = ઈ એમ આઈ, KYC = કે વાય સી."
   },
   {
     "language": "MR",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "जेव्हा business loan, insurance, किंवा investment products संबंधित असेल, तेव्हा हे शब्द इंग्रजीत ठेवा: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter वाचा: EMI = ई एम आय, KYC = के वाय सी, SIP = एस आय पी."
+    "content": "Aadhaar आणि PAN नेहमी इंग्रजीत ठेवा, ही standard identity document ची नावे आहेत. Letter by letter वाचा: PAN = पी ए एन."
+  },
+  {
+    "language": "MR",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "जेव्हा business loan, insurance, किंवा investment products संबंधित असेल, तेव्हा हे शब्द इंग्रजीत ठेवा: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter वाचा: EMI = ई एम आय, KYC = के वाय सी, SIP = एस आय पी."
   },
   {
     "language": "TE",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "బిజినెస్ లోన్, ఇన్సూరెన్స్, లేదా investment products తో సంబంధం ఉన్నప్పుడు, ఈ పదాలు ఎప్పుడూ English లో ఉండాలి: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter చదవండి: EMI = ఇ ఎం ఐ, KYC = కె వై సి, SIP = ఎస్ ఐ పి."
+    "content": "Aadhaar, PAN ఎప్పుడూ English లో ఉండాలి, ఇవి standard identity document పేర్లు. Letter by letter చదవండి: PAN = పి ఎ ఎన్."
+  },
+  {
+    "language": "TE",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "బిజినెస్ లోన్, ఇన్సూరెన్స్, లేదా investment products తో సంబంధం ఉన్నప్పుడు, ఈ పదాలు ఎప్పుడూ English లో ఉండాలి: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, policy, premium, settlement. Letter by letter చదవండి: EMI = ఇ ఎం ఐ, KYC = కె వై సి, SIP = ఎస్ ఐ పి."
   },
   {
     "language": "OD",
-    "category": "finance_terms",
+    "category": "identity_documents",
     "tags": [
-      "finance_terms"
+      "identity_documents"
     ],
-    "content": "ବ୍ୟବସାୟ loan, insurance, କିମ୍ବା investment products ସହିତ ସମ୍ପର୍କିତ ହେଲେ, ଏହି ଶବ୍ଦଗୁଡ଼ିକ ସର୍ବଦା ଇଂରାଜୀରେ ରୁହନ୍ତୁ, କଦାପି ଓଡିଆରେ ଅନୁବାଦ ନ କରନ୍ତୁ: EMI, loan, interest, KYC, PAN, Aadhaar, insurance, mutual fund, SIP, portfolio, Policy, Premium, settlement."
+    "content": "Aadhaar ଏବଂ PAN ସର୍ବଦା ଇଂରାଜୀରେ ରୁହନ୍ତୁ, ଏଗୁଡ଼ିକ standard identity document ନାମ, କଦାପି ଓଡିଆରେ ଅନୁବାଦ ନ କରନ୍ତୁ."
+  },
+  {
+    "language": "OD",
+    "category": "lending_insurance_terms",
+    "tags": [
+      "lending_insurance_terms"
+    ],
+    "content": "ବ୍ୟବସାୟ loan, insurance, କିମ୍ବା investment products ସହିତ ସମ୍ପର୍କିତ ହେଲେ, ଏହି ଶବ୍ଦଗୁଡ଼ିକ ସର୍ବଦା ଇଂରାଜୀରେ ରୁହନ୍ତୁ, କଦାପି ଓଡିଆରେ ଅନୁବାଦ ନ କରନ୍ତୁ: EMI, loan, interest, KYC, insurance, mutual fund, SIP, portfolio, Policy, Premium, settlement."
   }
 ]
