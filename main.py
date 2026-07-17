@@ -93,7 +93,7 @@ def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
         contents=full_prompt,
         config=_build_config(model, max_output_tokens=32000)
     )
-    return response.text
+    return response.text or ""
 
 
 # ---------- STAGE 3: Relevance Matcher ----------
@@ -243,7 +243,7 @@ RELEVANT LANGUAGE CHUNKS FOR {language}:
         contents=full_prompt,
         config=_build_config(model, max_output_tokens=16000)
     )
-    return response.text
+    return response.text or ""
 
 
 # ---------- STAGE 5: AI Reviewer / Debugger ----------
@@ -275,7 +275,7 @@ GENERATED LANGUAGE PROMPT ({language}):
         contents=full_prompt,
         config=_build_config(model, max_output_tokens=1500)
     )
-    return response.text
+    return response.text or ""
 
 
 APPLY_FIX_SYSTEM_PROMPT = """You are given a generated language-specific voice AI prompt, the business logic it should match, and a QA review that lists specific issues found in it.
@@ -303,7 +303,7 @@ QA REVIEW FINDINGS TO FIX:
         contents=full_prompt,
         config=_build_config(model, max_output_tokens=16000)
     )
-    return response.text
+    return response.text or ""
 
 
 # ---------- FULL PIPELINE ----------
@@ -602,7 +602,7 @@ def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MO
             contents=full_prompt,
             config=_build_config(model, max_output_tokens=8000)
         )
-        result = response.text.strip()
+        result = (response.text or "").strip()
         if result:
             return result
         if attempt < max_retries:
