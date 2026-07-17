@@ -215,6 +215,8 @@ STRICT NO-INVENTION RULE (applies to every category, especially Fillers and Back
 - If a chunk's coverage for a category is thin (e.g. only two filler words given), output only those — do not pad the list with more of your own to seem more "thorough."
 - If a category (e.g. Backchannels) has no corresponding chunk at all in the input below, omit that section entirely rather than generating one from general knowledge of the language.
 
+LANGUAGE-NAME CONSISTENCY — CHECK THIS EXPLICITLY: business logic is sometimes reused across multiple target languages, and it can still contain a leftover reference to whichever language it was originally written for (e.g. the business logic context says "numbers are spoken in Kannada words" or "dates are read in Hindi" even though you are generating for Telugu right now). If the business logic context names a specific spoken language for how numbers, currency, dates, or identifiers should be pronounced, and that named language is NOT the language you are generating this output for, treat that name as a leftover artifact and correct it silently to the actual target language you are writing for — never carry a mismatched language name into your output. This applies to every mention of the pattern, not just the first one. Before finishing, scan your own output for the name of any language other than the one you are generating — if you find one in this context, fix it.
+
 Output the final language prompt only, no commentary."""
 
 
