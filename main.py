@@ -316,6 +316,36 @@ QA REVIEW FINDINGS TO FIX:
 
 # ---------- FULL PIPELINE ----------
 
+# Categories whose chunk content is a flat, comma-separated vocabulary list meant to
+# survive VERBATIM (never paraphrased) — as opposed to prose-style categories like
+# escalation or colloquial style, where legitimate rewording is expected and a strict
+# per-term check would constantly false-positive. Calibration confirmed a broad
+# word-overlap check is too noisy for prose; but for these specific categories, every
+# term is a fixed, non-negotiable word the business explicitly requires preserved, so a
+# precise presence check is both safe and exactly the right tool.
+_VOCABULARY_LIST_CATEGORIES = {
+    "preserve_english_terms", "identity_documents", "lending_insurance_terms",
+    "backchannels", "fillers",
+}
+
+
+def _extract_vocabulary_terms(chunk_content: str) -> list:
+    """Pulls the comma-separated term list out of a vocabulary-list chunk. These chunks
+    follow the pattern '...instruction sentence: term1, term2, term3...' — this grabs the
+    segment right after each colon, up to the next sentence boundary, and splits it on
+    commas. Filters out pronunciation-mapping fragments (e.g. 'KYC = K-Y-C') and anything
+    too long to plausibly be a single term, since those are prose, not list items."""
+    segments = re.split(r':\s*', chunk_content)
+    terms = []
+    for seg in segments[1:]:
+        first_sentence = re.split(r'[.\n]', seg)[0]
+        for part in first_sentence.split(','):
+            term = part.strip().rstrip('.').strip()
+            if term and '=' not in term and len(term.split()) <= 3 and len(term) < 30:
+                terms.append(term)
+    return list(dict.fromkeys(terms))  # dedupe, preserve order
+
+
 def _significant_words(text: str) -> set:
     """Extracts distinctive vocabulary from text (4+ letter words, any script, common
     stopwords excluded) as a cheap proxy for 'how much of this content is present
@@ -398,6 +428,28 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
                     + chunk["content"]
                 )
         lang_warnings = []  # resolved via forced inclusion, not left as an unresolved warning
+
+    # GUARANTEE 4: precise vocabulary-list completion. Unlike prose categories, a
+    # vocabulary-list chunk (preserved terms, identity documents, lending/insurance
+    # terms, backchannels, fillers) is a fixed set of individual words the business
+    # explicitly requires — there's no legitimate "paraphrase" of a term list, each word
+    # either made it in or didn't. This is precisely the pattern that caused real gaps
+    # before (e.g. six lending/insurance terms present in one language's output but
+    # silently absent from another, despite both being fed the identical chunk). Since
+    # every listed term is meant to appear close to verbatim, checking for its literal
+    # presence is safe here in a way a broad prose check never was — and any term that
+    # didn't make it gets added directly, closing this exact gap for any business, any
+    # language, any future vocabulary-list chunk, not just the one that surfaced it.
+    for chunk in relevant_chunks:
+        if chunk.get("category") not in _VOCABULARY_LIST_CATEGORIES:
+            continue
+        terms = _extract_vocabulary_terms(chunk["content"])
+        missing_terms = [t for t in terms if t.lower() not in output_text.lower()]
+        if missing_terms:
+            output_text = output_text.rstrip() + (
+                f"\n\n### {chunk['category'].replace('_', ' ').title()} — additional terms (verified present)\n"
+                + ", ".join(missing_terms)
+            )
 
     # GUARANTEE 3: automatic semantic review and correction, run on every generation,
     # not as an opt-in button. Word-overlap checks (guarantees 1 and 2) are fast and
