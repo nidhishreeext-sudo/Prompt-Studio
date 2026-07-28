@@ -367,8 +367,97 @@ def _coverage_ratio(source_text: str, output_text: str) -> float:
     return len(source_words & output_words) / len(source_words)
 
 
+def _split_into_checkable_units(text: str) -> list:
+    """Splits custom notes into independently-checkable units (one per line/bullet, or
+    per sentence within a line) instead of leaving them as one aggregate blob. This is
+    what lets a small, distinct rule be checked on its own merits rather than having its
+    survival averaged against a large surrounding block of reference data that happens
+    to survive easily — a large intact block should never be able to mask a small
+    dropped one just by diluting the aggregate score."""
+    lines = [l.strip().lstrip('*-•').strip() for l in text.split('\n') if l.strip()]
+    units = []
+    for line in lines:
+        sentences = re.split(r'(?<=[.!?])\s+', line)
+        units.extend(s.strip() for s in sentences if s.strip())
+    return [u for u in units if len(u) > 15]  # skip trivial fragments (stray punctuation, headers)
+
+
+def _adaptive_limits(business_logic_len: int, requested_max_retries: int) -> tuple:
+    """Scales down the per-language workload automatically for very large inputs.
+
+    Languages already run in parallel (see max_workers below), so requesting 3
+    languages instead of 1 doesn't stack their time on top of each other. What DOES
+    stack is the chain of sequential calls WITHIN one language: up to
+    (max_retries + 1) synthesis attempts, then a review call, then a possible fix call
+    — each one processing the full business logic as context, so each one gets slower
+    as that context grows. For a huge input, 6 sequential large-context calls is enough
+    to exceed a server timeout on its own, regardless of how many languages are
+    requested. This trims that chain automatically rather than failing outright:
+    fewer retries (the deterministic guarantee layers below still catch what a retry
+    would have fixed) and skipping the extra semantic review pass for this run, since
+    completing reliably matters more than the extra scrutiny when the input is this
+    large. Returns (effective_max_retries, skip_review).
+    """
+    if business_logic_len > 80_000:
+        return 1, True
+    if business_logic_len > 40_000:
+        return 2, False
+    return requested_max_retries, False
+
+
+# Unicode block for each language's own script. Only languages with a distinct,
+# non-Latin script are listed — English has no script of its own to check against,
+# and checking it here would just produce noise.
+_SCRIPT_RANGES = {
+    "HI": (0x0900, 0x097F),  # Devanagari
+    "MR": (0x0900, 0x097F),  # Devanagari (shared with Hindi)
+    "TE": (0x0C00, 0x0C7F),  # Telugu
+    "KN": (0x0C80, 0x0CFF),  # Kannada
+    "TA": (0x0B80, 0x0BFF),  # Tamil
+    "ML": (0x0D00, 0x0D7F),  # Malayalam
+    "GU": (0x0A80, 0x0AFF),  # Gujarati
+    "OD": (0x0B00, 0x0B7F),  # Odia
+}
+
+
+def _detect_script_mismatch(output_text: str, expected_lang: str):
+    """Detects wholesale wrong-language generation — not a stray word or a mismatched
+    pronunciation rule (those are caught elsewhere), but an entire document written in
+    a different script than the one requested. This happened in production: a request
+    for Telugu came back almost entirely in Devanagari (Hindi) script, structurally
+    coherent, individually correct-looking sentences, just the wrong language start to
+    finish. None of the other guarantees catch this, because they all reason about
+    MEANING (did this rule survive, does this vocabulary belong), and a wrong-language
+    document can still look internally consistent by that measure. Script identity is
+    different: it's a hard, unambiguous fact about the text, not a judgment call, so
+    checking it directly catches this specific failure class with certainty rather than
+    probability. Returns the wrongly-dominant language code if a mismatch is found, or
+    None if the script is correct (or the language has no dedicated script to check,
+    e.g. English)."""
+    if expected_lang not in _SCRIPT_RANGES:
+        return None
+    counts = {lang: 0 for lang in _SCRIPT_RANGES}
+    for ch in output_text:
+        cp = ord(ch)
+        for lang, (lo, hi) in _SCRIPT_RANGES.items():
+            if lo <= cp <= hi:
+                counts[lang] += 1
+                break
+    total = sum(counts.values())
+    if total < 50:  # not enough script content in the output to judge reliably either way
+        return None
+    expected_share = counts[expected_lang] / total
+    if expected_share >= 0.3:  # expected script is clearly present, not a wholesale mismatch
+        return None
+    wrong_lang = max((l for l in counts if l != expected_lang), key=lambda l: counts[l])
+    if counts[wrong_lang] > counts[expected_lang]:
+        return wrong_lang
+    return None
+
+
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
-                            model: str, max_retries: int, custom_notes: str = "") -> tuple:
+                            model: str, max_retries: int, custom_notes: str = "",
+                            skip_review: bool = False) -> tuple:
     """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread.
 
     GUARANTEE LAYER — this is the part that makes silent content loss structurally
@@ -390,25 +479,71 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
 
     output_text = None
     lang_warnings = []
+    script_correction_note = ""
 
     for attempt in range(max_retries + 1):
-        output_text = synthesize_language_prompt(clean_business_logic, relevant_chunks, lang, model=model, custom_notes=custom_notes)
+        # If the previous attempt came back in the wrong script entirely, inject an
+        # explicit, unmissable correction ahead of everything else for this retry —
+        # this is not a minor style fix, it's telling the model the whole document was
+        # in the wrong language and must not be again.
+        retry_notes = (script_correction_note + "\n\n" + custom_notes).strip() if script_correction_note else custom_notes
+        output_text = synthesize_language_prompt(clean_business_logic, relevant_chunks, lang, model=model, custom_notes=retry_notes)
+
+        wrong_script_lang = _detect_script_mismatch(output_text, lang)
         lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
-        if not lang_warnings:
+
+        if wrong_script_lang:
+            script_correction_note = (
+                f"CRITICAL CORRECTION — read this first: your previous attempt for this "
+                f"exact request was written almost entirely in {wrong_script_lang}'s script "
+                f"instead of {lang}'s own script. This is not a wording issue, the entire "
+                f"document must be in {lang}'s script from the first sentence onward. Do not "
+                f"repeat that mistake."
+            )
+            if attempt < max_retries:
+                print(f"  ⚠ {lang} attempt {attempt + 1} came back in {wrong_script_lang} script, forcing corrective retry...")
+                continue  # this takes priority over invariant warnings — retry regardless of those
+        else:
+            script_correction_note = ""
+
+        if not lang_warnings and not wrong_script_lang:
             break  # clean pass, stop retrying
-        if attempt < max_retries:
+        if attempt < max_retries and not wrong_script_lang:
             print(f"  ⟳ {lang} attempt {attempt + 1} had {len(lang_warnings)} warning(s), retrying...")
+
+    # If script mismatch survived every retry, this is severe enough that it must not
+    # ship silently — surface it as an unmissable warning rather than letting a
+    # wrong-language document pass through every other guarantee layer unflagged.
+    final_wrong_script = _detect_script_mismatch(output_text, lang)
+    if final_wrong_script:
+        lang_warnings = [f"CRITICAL: output for '{lang}' is predominantly in {final_wrong_script} script after "
+                          f"all retries — this document is very likely the wrong language and should not be used "
+                          f"as-is."] + lang_warnings
 
     # GUARANTEE 1: business-specific custom notes. No automated invariant exists for
     # arbitrary free-text custom rules (they're different for every business), so this
-    # is the only safety net for them. If most of the custom notes' own vocabulary
-    # didn't survive into the output, the model dropped or heavily diluted them —
-    # append them verbatim so they are never silently lost, regardless of the reason.
-    if custom_notes.strip() and _coverage_ratio(custom_notes, output_text) < 0.45:
-        output_text = output_text.rstrip() + (
-            "\n\n### Business-Specific Rules (verified present — do not remove)\n"
-            + custom_notes.strip()
-        )
+    # is the only safety net for them.
+    #
+    # Checking custom_notes as one aggregate blob has a real blind spot: a business
+    # whose custom notes mix a large block of reference data (pricing, contacts, ride
+    # lists — voluminous, and reliably survives synthesis) with a small distinct set of
+    # hard guardrails can pass the AGGREGATE coverage check easily, purely on the
+    # strength of the reference data surviving, even while every one of the guardrail
+    # sentences inside that same blob got fully dropped. This is exactly the failure
+    # mode found in production: 6 "never-flex" rules in, 1 survived, and the aggregate
+    # score never flagged it because the surrounding reference data was intact.
+    #
+    # The fix: split custom notes into independent units (one per line/sentence) and
+    # check EACH one's own survival, not the average across all of them. A large intact
+    # block can no longer hide a small dropped one.
+    if custom_notes.strip():
+        units = _split_into_checkable_units(custom_notes)
+        missing_units = [u for u in units if _coverage_ratio(u, output_text) < 0.35]
+        if missing_units:
+            output_text = output_text.rstrip() + (
+                "\n\n### Business-Specific Rules — additional rules (verified present)\n"
+                + "\n".join(missing_units)
+            )
 
     # GUARANTEE 2: safety-critical identifier/currency/gold rules. If retries are
     # exhausted and an invariant is still failing, don't just report the warning —
@@ -461,8 +596,8 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     # dropped, vocabulary that doesn't belong for this business. This runs with the
     # stronger review model regardless of which model generated the draft, since
     # catching subtle problems matters more here than matching the generation model.
-    review_text = review_language_prompt(clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL)
-    if _review_found_issues(review_text):
+    review_text = "" if skip_review else review_language_prompt(clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL)
+    if not skip_review and _review_found_issues(review_text):
         output_text = apply_review_fixes(clean_business_logic, output_text, review_text, lang, model=DEFAULT_REVIEW_MODEL)
 
     return lang, output_text, lang_warnings
@@ -510,10 +645,15 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     prompts = {}
     warnings = {}
 
+    effective_max_retries, skip_review = _adaptive_limits(len(clean_business_logic), max_retries)
+    if skip_review:
+        print(f"  ⚠ Large input ({len(clean_business_logic)} chars) — reducing retries to "
+              f"{effective_max_retries} and skipping the review pass to stay within the time budget.")
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(_generate_one_language, clean_business_logic, lang, all_chunks, model, max_retries,
-                             custom_notes_by_language.get(lang, "")): lang
+            executor.submit(_generate_one_language, clean_business_logic, lang, all_chunks, model, effective_max_retries,
+                             custom_notes_by_language.get(lang, ""), skip_review): lang
             for lang in languages
         }
         for future in as_completed(futures):
