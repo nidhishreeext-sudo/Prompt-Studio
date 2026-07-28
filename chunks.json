@@ -29,7 +29,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Always expand ALL numbers, money, currency, and dates into full English words. Never output digits or Arabic numerals in spoken responses. Percentage examples: 87% -> eighty-seven percent, 72.5% -> seventy-two point five percent. Year / establishment year uses paired digits: 1994 -> nineteen ninety-four, 2003 -> two thousand three, 2015 -> twenty fifteen. Cutoff / percentage: whole number in words, then \"point\", then each decimal digit: 73.47 -> seventy-three point four seven. Fee / currency uses natural groupings (lakh, thousand, hundred) ending with rupees: 28,000 -> twenty-eight thousand rupees. Phone / OTP / reference numbers are read digit by digit: 9876 -> nine eight seven six. Always repeat the customer's own numbers back in the same format they used."
+    "content": "Expand all numbers, money, currency, and dates into full English words, never digits. Percent: 87% -> eighty-seven percent, 72.5% -> seventy-two point five percent. Years use paired digits: 1994 -> nineteen ninety-four, 2015 -> twenty fifteen. Decimals: whole number, \"point\", then each digit -> 73.47 is seventy-three point four seven. Currency uses natural groupings (lakh, thousand): 28,000 -> twenty-eight thousand rupees. Phone/OTP read digit by digit: 9876 -> nine eight seven six. Repeat the customer's own numbers back in the same format they used."
   },
   {
     "language": "EN",
@@ -37,7 +37,7 @@
     "tags": [
       "currency"
     ],
-    "content": "Always say \"rupees\" after the amount, e.g. three hundred rupees, two lakh fifty thousand rupees. Never calculate, round, or estimate, only speak tool-provided figures."
+    "content": "Say \"rupees\" after the amount, e.g. three hundred rupees, two lakh fifty thousand rupees. Never calculate, round, or estimate — only speak tool-provided figures."
   },
   {
     "language": "EN",
@@ -207,7 +207,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Expand all numbers, money, currency, and dates into full Hindi words. Never output digits or Arabic numerals. Reference: 1=एक, 2=दो, 3=तीन, 4=चार, 5=पाँच, 6=छह, 7=सात, 8=आठ, 9=नौ, 10=दस, 20=बीस, 30=तीस, 40=चालीस, 50=पचास, 60=साठ, 70=सत्तर, 80=अस्सी, 90=नब्बे, 100=सौ, 1,000=हज़ार, 1,00,000=लाख, 1,00,00,000=करोड़. Percentage examples: 87% is सत्तासी प्रतिशत, 72.5% is बहत्तर दशमलव पाँच प्रतिशत. Years use paired digits: 1994 is उन्नीस सौ चौरानवे, 2015 is दो हज़ार पंद्रह. Phone/OTP numbers are read digit by digit: 9876 is नौ आठ सात छह."
+    "content": "Expand all numbers, money, currency, and dates into full Hindi words, never digits. Base: 1=एक, 2=दो, 3=तीन, 4=चार, 5=पाँच, 6=छह, 7=सात, 8=आठ, 9=नौ, 10=दस; tens 20=बीस, 30=तीस, 40=चालीस, 50=पचास, 60=साठ, 70=सत्तर, 80=अस्सी, 90=नब्बे; 100=सौ, 1,000=हज़ार, 1,00,000=लाख, 1,00,00,000=करोड़. Percent example: 87% is सत्तासी प्रतिशत. Years use paired digits: 1994 is उन्नीस सौ चौरानवे. Phone/OTP read digit by digit: 9876 is नौ आठ सात छह."
   },
   {
     "language": "HI",
@@ -215,7 +215,7 @@
     "tags": [
       "currency"
     ],
-    "content": "Place रुपये after the amount, never before. Example: तीन सौ रुपये, not रु. तीन सौ. Use दशमलव for decimals, never point. Examples: ₹2,500 is दो हज़ार पाँच सौ रुपये, ₹2,50,000 is दो लाख पचास हज़ार रुपये. Never calculate or estimate an amount."
+    "content": "रुपये after the amount, never before (तीन सौ रुपये, not रु. तीन सौ). दशमलव for decimals, never point. Example: ₹2,50,000 is दो लाख पचास हज़ार रुपये. Never calculate or estimate."
   },
   {
     "language": "HI",
@@ -385,7 +385,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Always expand ALL numbers, money, currency, and dates into full Kannada words. Never output digits or Arabic numerals in spoken responses. Reference: 1=ಒಂದು, 2=ಎರಡು, 3=ಮೂರು, 4=ನಾಲ್ಕು, 5=ಐದು, 6=ಆರು, 7=ಏಳು, 8=ಎಂಟು, 9=ಒಂಬತ್ತು, 10=ಹತ್ತು, 20=ಇಪ್ಪತ್ತು, 30=ಮೂವತ್ತು, 40=ನಲವತ್ತು, 50=ಐವತ್ತು, 60=ಅರವತ್ತು, 70=ಎಪ್ಪತ್ತು, 80=ಎಂಬತ್ತು, 90=ತೊಂಬತ್ತು, 100=ನೂರು, 1,000=ಸಾವಿರ, 1,00,000=ಒಂದು ಲಕ್ಷ, 1,00,00,000=ಒಂದು ಕೋಟಿ. Compound numbers: 25=ಇಪ್ಪತ್ತೈದು, 65=ಅರವತ್ತೈದು, 72=ಎಪ್ಪತ್ತೆರಡು, 85=ಎಂಬತ್ತೈದು, 300=ಮುನ್ನೂರು. Use ಶೇಕಡಾ for percent, never million/billion. Percentage examples: 87%=ಎಂಬತ್ತೇಳು ಶೇಕಡಾ, 72.5%=ಎಪ್ಪತ್ತೆರಡು point ಐದು ಶೇಕಡಾ. Number pronunciation by context: Year/establishment year uses paired digits — 1994=ಹತ್ತೊಂಬತ್ತು ನೂರ ತೊಂಬತ್ತ್ನಾಲ್ಕು, 2015=ಎರಡು ಸಾವಿರದ ಹದಿನೈದು. Cutoff/percentage: whole number, then \"point\", then decimal digits — 73.47=ಎಪ್ಪತ್ತ್ಮೂರು point ನಲವತ್ತೇಳು. Customer's own numbers: always repeat back in the same format the customer used."
+    "content": "Expand ALL numbers, money, currency, and dates into full Kannada words, never digits. Base: 1=ಒಂದು, 2=ಎರಡು, 3=ಮೂರು, 4=ನಾಲ್ಕು, 5=ಐದು, 6=ಆರು, 7=ಏಳು, 8=ಎಂಟು, 9=ಒಂಬತ್ತು, 10=ಹತ್ತು; tens 20=ಇಪ್ಪತ್ತು, 30=ಮೂವತ್ತು, 40=ನಲವತ್ತು, 50=ಐವತ್ತು, 60=ಅರವತ್ತು, 70=ಎಪ್ಪತ್ತು, 80=ಎಂಬತ್ತು, 90=ತೊಂಬತ್ತು; 100=ನೂರು, 1,000=ಸಾವಿರ, 1,00,000=ಒಂದು ಲಕ್ಷ, 1,00,00,000=ಒಂದು ಕೋಟಿ. ಶೇಕಡಾ for percent, never million/billion; e.g. 87%=ಎಂಬತ್ತೇಳು ಶೇಕಡಾ. Years use paired digits: 1994=ಹತ್ತೊಂಬತ್ತು ನೂರ ತೊಂಬತ್ತ್ನಾಲ್ಕು. Decimals: whole number, \"point\", each digit — 73.47=ಎಪ್ಪತ್ತ್ಮೂರು point ನಲವತ್ತೇಳು. Repeat the customer's own numbers back in the same format they used."
   },
   {
     "language": "KN",
@@ -393,7 +393,7 @@
     "tags": [
       "currency"
     ],
-    "content": "ರೂಪಾಯಿ (rupayi) is placed AFTER the amount, never before, never the ₹ symbol. Example: ಮುನ್ನೂರು ರೂಪಾಯಿ (not ರೂ. ಮುನ್ನೂರು). For decimals, use ಪೈಸೆ, never ಪಾಯಿಂಟ್. Fee/currency amounts use natural groupings — ಲಕ್ಷ, ಸಾವಿರ, ನೂರು — ending with ರೂಪಾಯಿ. Examples: ₹300=ಮುನ್ನೂರು ರೂಪಾಯಿ, ₹2,500=ಎರಡು ಸಾವಿರದ ಐನೂರು ರೂಪಾಯಿ, ₹50,000=ಐವತ್ತು ಸಾವಿರ ರೂಪಾಯಿ, ₹2,50,000=ಎರಡು ಲಕ್ಷದ ಐವತ್ತು ಸಾವಿರ ರೂಪಾಯಿ, ₹1,15,500=ಒಂದು ಲಕ್ಷದ ಹದಿನೈದು ಸಾವಿರದ ಐನೂರು ರೂಪಾಯಿ, ₹2,162.17=ಎರಡು ಸಾವಿರ ನೂರು ಅರವತ್ತೆರಡು ರೂಪಾಯಿ ಹದಿನೇಳು ಪೈಸೆ. Never calculate or estimate currency amounts."
+    "content": "ರೂಪಾಯಿ after the amount, never before, never ₹. ಪೈಸೆ for decimals, never ಪಾಯಿಂಟ್. Natural groupings — ಲಕ್ಷ, ಸಾವಿರ, ನೂರು. Examples: ₹300=ಮುನ್ನೂರು ರೂಪಾಯಿ, ₹2,50,000=ಎರಡು ಲಕ್ಷದ ಐವತ್ತು ಸಾವಿರ ರೂಪಾಯಿ. Never calculate or estimate."
   },
   {
     "language": "KN",
@@ -643,7 +643,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "All numbers in spoken output must be expanded to full Tamil words, digits and symbols must never appear. Amounts and quantities are read as a single quantity using full Tamil number words. Use சதவீதம் for percent, never %. Use லட்சம் for lakh and கோடி for crore, never million or billion. Reference: ஒன்று, இரண்டு, மூன்று, நான்கு, ஐந்து, ஆறு, ஏழு, எட்டு, ஒன்பது, பத்து, இருபது, முப்பது, நாற்பது, ஐம்பது, அறுபது, எழுபது, எண்பது, தொண்ணூறு, நூறு, ஆயிரம், லட்சம், கோடி, பூஜ்யம். Example: ✓ Amount நூற்று ஐம்பது ரூபாய் — ✗ Amount 150 ரூபாய் (digits banned) — ✗ Amount ₹150 (symbol banned)."
+    "content": "All numbers expand to full Tamil words, no digits or symbols. சதவீதம் for percent, லட்சம் for lakh, கோடி for crore, never million/billion. Base: ஒன்று, இரண்டு, மூன்று, நான்கு, ஐந்து, ஆறு, ஏழு, எட்டு, ஒன்பது, பத்து, இருபது, முப்பது, நாற்பது, ஐம்பது, அறுபது, எழுபது, எண்பது, தொண்ணூறு, நூறு, ஆயிரம், லட்சம், கோடி, பூஜ்யம். Example: ✓ நூற்று ஐம்பது ரூபாய் — ✗ 150 ரூபாய் / ₹150."
   },
   {
     "language": "TA",
@@ -660,7 +660,7 @@
     "tags": [
       "currency"
     ],
-    "content": "All currency amounts must be read as full Tamil words, symbols and digits must never appear. ரூபாய் always comes after the number words, never before: ✓ ஐந்நூறு ரூபாய் — ✗ ரூபாய் ஐந்நூறு. Decimals use பைசா, never பாயிண்ட் or point: ✓ ஐம்பது ரூபாய் ஐம்பது பைசா — ✗ ஐம்பது ரூபாய் பாயிண்ட் ஐம்பது. Never calculate, estimate, or modify an amount, only say amounts explicitly given."
+    "content": "Currency in full Tamil words only, no digits/symbols. ரூபாய் after the number, never before (✓ ஐந்நூறு ரூபாய் — ✗ ரூபாய் ஐந்நூறு). பைசா for decimals, never point. Never calculate or modify an amount."
   },
   {
     "language": "TA",
@@ -846,7 +846,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Quantitative values (count, amount, percent, tenure, age, year, ordinal, decimal): raw digits are banned, use Malayalam compound word forms instead. Reference: 1 ഒന്ന്, 2 രണ്ട്, 3 മൂന്ന്, 4 നാല്, 5 അഞ്ച്, 6 ആറ്, 7 ഏഴ്, 8 എട്ട്, 9 ഒമ്പത്, 10 പത്ത്, 20 ഇരുപത്, 25 ഇരുപത്തിയഞ്ച്, 50 അമ്പത്, 100 നൂറ്, 1,000 ആയിരം, 1,00,000 ഒരു ലക്ഷം, 1,00,00,000 ഒരു കോടി. ലക്ഷം and കോടി only, never million or billion. Counter: \"1\" before a unit is ഒരു, never ഒന്ന് (1 year is ഒരു വർഷം). Halves: 0.5 അര, 1.5 ഒന്നര, 2.5 രണ്ടര (1.5 lakh is ഒന്നര ലക്ഷം). Decimal: integer compound plus പോയിന്റ് plus fractional digits one by one, e.g. 8.5% is എട്ട് പോയിന്റ് അഞ്ച് ശതമാനം. Year: single compound, 2026 is രണ്ടായിരത്തി ഇരുപത്തിയാറ്. Unit fidelity: speak the source unit exactly, 36 months is മുപ്പത്തിയാറ് മാസം, never silently converted to years, no calculation, speak as supplied. Never calculate, speak only supplied values."
+    "content": "Quantities (count, amount, percent, age, year, decimal): no raw digits, use Malayalam compound words. Base: 1 ഒന്ന്, 2 രണ്ട്, 3 മൂന്ന്, 4 നാല്, 5 അഞ്ച്, 10 പത്ത്, 20 ഇരുപത്, 50 അമ്പത്, 100 നൂറ്, 1,000 ആയിരം, 1,00,000 ഒരു ലക്ഷം, 1,00,00,000 ഒരു കോടി. ലക്ഷം/കോടി only, never million/billion. \"1\" before a unit is ഒരു, never ഒന്ന് (1 year = ഒരു വർഷം). Halves: 1.5 ഒന്നര (1.5 lakh = ഒന്നര ലക്ഷം). Decimal: compound + പോയിന്റ് + digits one by one, e.g. 8.5% = എട്ട് പോയിന്റ് അഞ്ച് ശതമാനം. Speak the exact unit given (36 months stays മാസം, never converted to years) — never calculate."
   },
   {
     "language": "ML",
@@ -854,7 +854,7 @@
     "tags": [
       "currency"
     ],
-    "content": "രൂപ always after the amount, never ₹, Rs., or INR. പൈസ for sub-rupee decimals. ₹2,999 is രണ്ടായിരത്തി തൊള്ളായിരത്തി തൊണ്ണൂറ്റി ഒമ്പത് രൂപ. ₹1,00,000 is ഒരു ലക്ഷം രൂപ, ₹1,50,000 is ഒന്നര ലക്ഷം രൂപ. Paise are suppressed when they are 00: ₹500.00 is അഞ്ഞൂറ് രൂപ. Per unit: ₹100/month is ഒരു മാസത്തേക്ക് നൂറ് രൂപ. Never convert currency, no calculation."
+    "content": "രൂപ after the amount, never ₹/Rs./INR. പൈസ for sub-rupee decimals, suppressed when 00 (₹500.00 = അഞ്ഞൂറ് രൂപ). Example: ₹1,50,000 = ഒന്നര ലക്ഷം രൂപ. Never convert or calculate."
   },
   {
     "language": "ML",
@@ -975,7 +975,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Expand ALL numbers, amounts, currency, and dates into full Gujarati words in Gujarati script. Never output digits or Arabic numerals in a Gujarati response. Years use paired-digit style: 1994 = ઓગણીસો ચોરાણું, 2003 = બે હજાર ત્રણ, 2015 = બે હજાર પંદર. Percentages: whole number + point + each decimal digit including zero, e.g. 62.06 = બાસઠ point zero છ, 87.5% = સિત્યાસી point પાંચ ટકા. Counts and quantities: plain Gujarati words + English unit, e.g. 3 days = ત્રણ days, 128 = એકસો અઠ્ઠાવીસ units. Reference: 25=પચ્ચીસ, 28=અઠ્ઠાવીસ, 30=ત્રીસ, 40=ચાળીસ, 50=પચાસ, 55=પંચાવન, 60=સાઈઠ, 62=બાસઠ, 65=પાંસઠ, 70=સિત્તેર, 72=બોત્તેર, 75=પંચોતેર, 78=અઠ્ઠોતેર, 80=એંસી, 85=પંચાસી, 87=સિત્યાસી, 90=નેવું, 95=પંચાણું, 99=નેઠ્ઠ્યાણું, 100=સો, 500=પાંચ સો, 1000=એક હજાર. Customer-stated numbers: always mirror back in the same format the customer used."
+    "content": "Expand all numbers, amounts, currency, dates into full Gujarati words, never digits. Base: 1=એક...10=દસ, 20=વીસ, 30=ત્રીસ, 40=ચાળીસ, 50=પચાસ, 60=સાઈઠ, 70=સિત્તેર, 80=એંસી, 90=નેવું, 100=સો, 1000=એક હજાર. Years: paired-digit style, e.g. 2015 = બે હજાર પંદર. Percent: whole number + point + each decimal digit, e.g. 87.5% = સિત્યાસી point પાંચ ટકા. Mirror the customer's own numbers back in the same format they used."
   },
   {
     "language": "GU",
@@ -983,7 +983,7 @@
     "tags": [
       "currency"
     ],
-    "content": "'રૂપિયા' always AFTER the amount, never before. ટકા for percent, never %/percent. Decimals use the English loanword \"point\" between Gujarati number words, e.g. સિત્તેર point પાંચ ટકા. Amounts group naturally into હજાર, લાખ, સો, always ending with રૂપિયા: 28000 = અઠ્ઠાવીસ હજાર રૂપિયા, 115500 = એક લાખ પંદર હજાર પાંચ સો રૂપિયા."
+    "content": "'રૂપિયા' always AFTER the amount, never before. ટકા for percent, never %. Decimals use \"point\" between Gujarati words. Groups into હજાર, લાખ, સો ending with રૂપિયા: 28000 = અઠ્ઠાવીસ હજાર રૂપિયા."
   },
   {
     "language": "GU",
@@ -1152,7 +1152,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Expand all numbers to full Marathi words, never digits or Arabic numerals. Reference: 1=एक, 2=दोन, 3=तीन, 4=चार, 5=पाच, 6=सहा, 7=सात, 8=आठ, 9=नऊ, 10=दहा, 20=वीस, 30=तीस, 40=चाळीस, 50=पन्नास, 60=साठ, 70=सत्तर, 80=ऐंशी, 90=नव्वद, 100=शंभर, 1,000=हजार, 1,00,000=लाख, 1,00,00,000=कोटी. Compound numbers: 25=पंचवीस, 65=पासष्ट, 72=बहात्तर, 85=पंच्याऐंशी. Use टक्के for percent, never million/billion. Percentage examples: 87%=सत्त्याऐंशी टक्के, 72.5%=बहात्तर point पाच टक्के. Year uses paired digits: 1994=एकोणीसशे चौऱ्याण्णव, 2015=दोन हजार पंधरा. Phone/OTP/reference numbers: digit by digit, e.g. 9876=नऊ आठ सात सहा. Customer's own numbers: repeat back in the same format the customer used."
+    "content": "Expand all numbers to full Marathi words, never digits. Base: 1=एक, 2=दोन, 3=तीन, 4=चार, 5=पाच, 6=सहा, 7=सात, 8=आठ, 9=नऊ, 10=दहा; tens 20=वीस, 30=तीस, 40=चाळीस, 50=पन्नास, 60=साठ, 70=सत्तर, 80=ऐंशी, 90=नव्वद; 100=शंभर, 1,000=हजार, 1,00,000=लाख, 1,00,00,000=कोटी. टक्के for percent, never million/billion; e.g. 87%=सत्त्याऐंशी टक्के. Year uses paired digits: 2015=दोन हजार पंधरा. Phone/OTP digit by digit: 9876=नऊ आठ सात सहा. Repeat the customer's own numbers back in the same format they used."
   },
   {
     "language": "MR",
@@ -1160,7 +1160,7 @@
     "tags": [
       "currency"
     ],
-    "content": "रुपये after the amount, never before, never the ₹ symbol. पैसे for decimals, never पॉइंट. Fee/currency uses natural groupings — लाख, हजार, शे — ending with रुपये. Examples: ₹300=तीनशे रुपये, ₹50,000=पन्नास हजार रुपये, ₹2,50,000=दोन लाख पन्नास हजार रुपये, ₹1,15,500=एक लाख पंधरा हजार पाचशे रुपये, ₹2,162.17=दोन हजार एकशे बासष्ट रुपये सतरा पैसे. Never calculate or estimate."
+    "content": "रुपये after the amount, never before, never ₹. पैसे for decimals, never पॉइंट. Groupings — लाख, हजार, शे. Examples: ₹300=तीनशे रुपये, ₹2,50,000=दोन लाख पन्नास हजार रुपये. Never calculate or estimate."
   },
   {
     "language": "MR",
@@ -1354,7 +1354,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Full Telugu words always: ఒకటి, పది, వంద, వేయి, లక్ష, కోటి. Never million/billion. శాతం for percent. Full digit and tens reference: 0=సున్నా, 1=ఒకటి, 2=రెండు, 3=మూడు, 4=నాలుగు, 5=ఐదు, 6=ఆరు, 7=ఏడు, 8=ఎనిమిది, 9=తొమ్మిది, 10=పది, 20=ఇరవై, 30=ముప్పై, 40=నలభై, 50=ఏభై, 60=అరవై, 70=డెబ్భై, 80=ఎనభై, 90=తొంభై. Always write numbers, times, and currency amounts in Telugu words, never in numerals or symbols."
+    "content": "Full Telugu words always, never digits/symbols: ఒకటి, పది, వంద, వేయి, లక్ష, కోటి (never million/billion). శాతం for percent. Base digits/tens: 0=సున్నా, 1=ఒకటి...9=తొమ్మిది, 10=పది, 20=ఇరవై, 30=ముప్పై, 40=నలభై, 50=ఏభై, 60=అరవై, 70=డెబ్భై, 80=ఎనభై, 90=తొంభై."
   },
   {
     "language": "TE",
@@ -1362,7 +1362,7 @@
     "tags": [
       "currency"
     ],
-    "content": "రూపాయలు after amount. పైసలు for decimals. Never output ₹ symbol, never output any numeral before రూపాయలు, always write the full Telugu word form of the number. Exact conversion pattern: 200 -> రెండు వందల రూపాయలు, 500 -> ఐదు వందల రూపాయలు, 1000 -> వెయ్యి రూపాయలు, 2000 -> రెండు వేల రూపాయలు, 5000 -> ఐదు వేల రూపాయలు, 10000 -> పది వేల రూపాయలు, 50000 -> యాభై వేల రూపాయలు, 100000 -> ఒక లక్ష రూపాయలు, 500000 -> ఐదు లక్షల రూపాయలు. e.g. ₹2,999 = రెండు వేల తొమ్మిది వందల తొంభై తొమ్మిది రూపాయలు."
+    "content": "రూపాయలు after amount, పైసలు for decimals, never ₹ or a numeral before రూపాయలు — always the full Telugu word form. Examples: 1000 -> వెయ్యి రూపాయలు, 100000 -> ఒక లక్ష రూపాయలు, ₹2,999 = రెండు వేల తొమ్మిది వందల తొంభై తొమ్మిది రూపాయలు."
   },
   {
     "language": "TE",
@@ -1492,7 +1492,7 @@
     "tags": [
       "numbers_general"
     ],
-    "content": "Always expand all numbers, counts, and percentages to full spoken Odia words in Odia script, never raw digits or mathematical symbols. Full number reference, 1 to 100: ୧=ଏକ, ୨=ଦୁଇ, ୩=ତିନି, ୪=ଚାରି, ୫=ପାଞ୍ଚ, ୬=ଛଅ, ୭=ସାତ, ୮=ଆଠ, ୯=ନଅ, ୧୦=ଦଶ, ୧୧=ଏଗାରୋ, ୧୨=ବାର, ୧୩=ତେର, ୧୪=ଚଉଦ, ୧୫=ପନ୍ଦର, ୧୬=ଷୋହଳ, ୧୭=ସତର, ୧୮=ଅଠର, ୧୯=ଉଣେଇଶି, ୨୦=କୋଡ଼ିଏ, ୨୧=ଏକୋଇଶି, ୨୨=ବାଇଶି, ୨୩=ତେଇଶି, ୨୪=ଚବିଶି, ୨୫=ପଚିଶି, ୨୬=ଛବିଶି, ୨୭=ସତେଇଶି, ୨୮=ଅଠେଇଶି, ୨୯=ଅଣତିରିଶି, ୩୦=ତିରିଶି, ୩୧=ଏକତିରିଶି, ୩୨=ବତିଶି, ୩୩=ତେତିଶି, ୩୪=ଚଉତିରିଶି, ୩୫=ପଇଁତିରିଶି, ୩୬=ଛତିଶି, ୩୭=ସଇଁତିରିଶି, ୩୮=ଅଠତିରିଶି, ୩୯=ଅଣଚାଳିଶି, ୪୦=ଚାଳିଶି, ୪୧=ଏକଚାଳିଶି, ୪୨=ବୟାଳିଶି, ୪୩=ତେୟାଳିଶି, ୪୪=ଚଉରାଳିଶି, ୪୫=ପଇଁଚାଳିଶି, ୪୬=ଛୟାଳିଶି, ୪୭=ସତଚାଳିଶି, ୪୮=ଅଠଚାଳିଶି, ୪୯=ଅଣଚାଶ, ୫୦=ପଚାଶ, ୫୧=ଏକାବନ, ୫୨=ବାଉନ, ୫୩=ତେପନ, ୫୪=ଚଉବନ, ୫୫=ପଞ୍ଚାବନ, ୫୬=ଛପନ, ୫୭=ସତାବନ, ୫୮=ଅଠାବନ, ୫୯=ଅଣଷଠି, ୬୦=ଷାଠିଏ, ୬୧=ଏକଷଠି, ୬୨=ବାଷଠି, ୬୩=ତେଷଠି, ୬୪=ଚଉଷଠି, ୬୫=ପଞ୍ଚଷଠି, ୬୬=ଛଅଷଠି, ୬୭=ସତଷଠି, ୬୮=ଅଠଷଠି, ୬୯=ଅଣସ୍ତରୀ, ୭୦=ସତୁରି, ୭୧=ଏକସ୍ତରୀ, ୭୨=ବାସ୍ତରୀ, ୭୩=ତେସ୍ତରୀ, ୭୪=ଚଉସ୍ତରୀ, ୭୫=ପଞ୍ଚସ୍ତରୀ, ୭୬=ଛଅସ୍ତରୀ, ୭୭=ସତସ୍ତରୀ, ୭୮=ଅଠସ୍ତରୀ, ୭୯=ଅଣାଅଶୀ, ୮୦=ଅଶୀ, ୮୧=ଏକାଶୀ, ୮୨=ବୟାଶୀ, ୮୩=ତେୟାଶୀ, ୮୪=ଚଉରାଶୀ, ୮୫=ପଞ୍ଚାଶୀ, ୮୬=ଛୟାଶୀ, ୮୭=ସତାଶୀ, ୮୮=ଅଠାଶୀ, ୮୯=ଅଣାନବେ, ୯୦=ନବେ, ୯୧=ଏକାନବେ, ୯୨=ବୟାନବେ, ୯୩=ତେୟାନବେ, ୯୪=ଚଉରାନବେ, ୯୫=ପଞ୍ଚାନବେ, ୯୬=ଛୟାନବେ, ୯୭=ସତାନବେ, ୯୮=ଅଠାନବେ, ୯୯=ଅନେଶୀ, ୧୦୦=ଏକ ଶହ. Larger amounts: ୧,୦୦୦=ଏକ ହଜାର, ୨,୦୦୦=ଦୁଇ ହଜାର, ୧୦,୦୦୦=ଦଶ ହଜାର, ୧,୦୦,୦୦୦=ଏକ ଲକ୍ଷ, ୧,୦୦,୦୦,୦୦୦=ଏକ କୋଟି. Always use ପ୍ରତିଶତ for percent, never the English word percent or the % symbol. For decimals, always use the loanword ଦଶମିକ between the Odia number words, never the English word point: 62.06 = ବାଷଠି ଦଶମିକ ଶୂନ୍ୟ ଛଅ; 73.47 = ତେସ୍ତରୀ ଦଶମିକ ଚାରି ସାତ."
+    "content": "Expand all numbers, counts, percentages into full spoken Odia words, never raw digits or symbols. Base (irregular, memorize): ୧=ଏକ, ୨=ଦୁଇ, ୩=ତିନି, ୪=ଚାରି, ୫=ପାଞ୍ଚ, ୬=ଛଅ, ୭=ସାତ, ୮=ଆଠ, ୯=ନଅ, ୧୦=ଦଶ, ୧୧–୧୯: ଏଗାରୋ, ବାର, ତେର, ଚଉଦ, ପନ୍ଦର, ଷୋହଳ, ସତର, ଅଠର, ଉଣେଇଶି. Tens: ୨୦=କୋଡ଼ିଏ, ୩୦=ତିରିଶି, ୪୦=ଚାଳିଶି, ୫୦=ପଚାଶ, ୬୦=ଷାଠିଏ, ୭୦=ସତୁରି, ୮୦=ଅଶୀ, ୯୦=ନବେ, ୧୦୦=ଏକ ଶହ. Larger: ୧,୦୦୦=ଏକ ହଜାର, ୧,୦୦,୦୦୦=ଏକ ଲକ୍ଷ, ୧,୦୦,୦୦,୦୦୦=ଏକ କୋଟି. ପ୍ରତିଶତ for percent, never % or the English word. Decimals use ଦଶମିକ between number words, never \"point\": 62.06 = ବାଷଠି ଦଶମିକ ଶୂନ୍ୟ ଛଅ."
   },
   {
     "language": "OD",
@@ -1500,7 +1500,7 @@
     "tags": [
       "currency"
     ],
-    "content": "Always state ଟଙ୍କା AFTER the currency amount, never before, and never use the ₹ symbol in spoken output. Use the Indian counting framework (ଲକ୍ଷ, ହଜାର) for financial figures. ₹2,162 = ଦୁଇ ହଜାର ଏକ ଶହ ବାଷଠି ଟଙ୍କା; ₹5,00,000 = ପାଞ୍ଚ ଲକ୍ଷ ଟଙ୍କା. Never calculate, alter, or round off a price, speak only the exact figure given."
+    "content": "ଟଙ୍କା AFTER the amount, never before, never ₹. Use ଲକ୍ଷ, ହଜାର groupings. Example: ₹5,00,000 = ପାଞ୍ଚ ଲକ୍ଷ ଟଙ୍କା. Never calculate, alter, or round a price — speak only the exact figure given."
   },
   {
     "language": "OD",

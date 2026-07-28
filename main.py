@@ -223,6 +223,8 @@ CASE 2 — OMISSION: business logic or custom notes sometimes contain a rule tha
 
 Before finishing, scan your own output for the name of any language other than the one you are generating right now. For each one you find: if it's Case 1 (a pronunciation instruction with a fixable name), correct the name. If it's Case 2 (a rule that only makes sense for that other language), delete the sentence entirely. Do not leave a rule in that only makes grammatical or logical sense in a different language than the one you are writing.
 
+LENGTH BUDGET: the finished document should land roughly between 8,000 and 10,000 tokens total. Stay concise throughout, and be especially disciplined in the Numbers and Currency sections — the chunks below already give you the base digits, tens, and grouping words needed; do not pad this out with additional derived examples (e.g. deriving and listing 21, 22, 23... once 20 and the units are established) or extra currency amount illustrations beyond what's already provided. One or two examples per rule is enough to establish the pattern — more is redundant, not more helpful, and eats into the budget other sections need.
+
 Output the final language prompt only, no commentary."""
 
 
@@ -455,6 +457,38 @@ def _detect_script_mismatch(output_text: str, expected_lang: str):
     return None
 
 
+# Hindi and Marathi are the one pair in this system that share a script — both
+# Devanagari — so _detect_script_mismatch's Unicode-range check structurally cannot
+# tell them apart; text that's correctly identified as "Devanagari" can still be the
+# wrong LANGUAGE within that script. This happened in production: custom notes
+# extracted from a business prompt's Hindi section ("You only speak in Hindi, always")
+# got fed into a Marathi generation, rendered in perfectly valid Devanagari, and passed
+# the script check cleanly since it never checked language identity, only script.
+# These marker words are extremely common, high-frequency, and genuinely unambiguous
+# between the two languages — not a stylistic difference, but entirely different words
+# for the same basic grammatical function (existential "is/are", negation, self-reference).
+_HI_MR_MARKERS = {
+    "HI": ["है", "हैं", "नहीं", "मुझे", "करता हूं", "करती हूं"],
+    "MR": ["आहे", "आहेत", "नाही", "मला", "करतो", "करते"],
+}
+
+
+def _detect_hindi_marathi_confusion(text: str, expected_lang: str):
+    """Only runs when expected_lang is HI or MR, since that's the only same-script pair
+    in this system. Returns the other language's code if its markers clearly dominate,
+    or None if the expected language's own markers are present as they should be."""
+    if expected_lang not in ("HI", "MR"):
+        return None
+    other_lang = "MR" if expected_lang == "HI" else "HI"
+    expected_count = sum(text.count(m) for m in _HI_MR_MARKERS[expected_lang])
+    other_count = sum(text.count(m) for m in _HI_MR_MARKERS[other_lang])
+    if expected_count + other_count < 5:  # too few markers present to judge reliably
+        return None
+    if other_count > expected_count * 1.5:
+        return other_lang
+    return None
+
+
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "",
                             skip_review: bool = False) -> tuple:
@@ -477,6 +511,30 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     for chunk in relevant_chunks:
         triggered_tags.update(chunk.get("tags", []))
 
+    # Filter custom_notes for wrong-language contamination BEFORE it's used anywhere —
+    # this is the actual source of the bug (custom notes extracted from the wrong
+    # per-language section of the business prompt), and it feeds both the synthesis
+    # prompt injection below AND Guarantee 1's append later. Catching it here stops it
+    # from leaking in through either path, rather than only detecting it in the final
+    # aggregated output, which has a real blind spot of its own: a large, correctly-
+    # scripted body can dilute a small contaminated section below any aggregate
+    # mismatch threshold, exactly the same dilution problem fixed earlier for Guarantee
+    # 1's coverage check, just recurring here in a different check. Checking the custom
+    # notes on their own, before they're mixed into anything larger, avoids that
+    # entirely — there's nothing yet for a contaminated section to hide inside.
+    #
+    # This runs the general script-mismatch check (catches any two languages with
+    # different scripts, e.g. Hindi custom notes leaking into Telugu) AND the
+    # Hindi/Marathi lexical check (the one pair that shares a script, where the general
+    # check alone is blind) — together they cover every language pair in this system.
+    wrong_lang_in_notes = None
+    if custom_notes.strip():
+        wrong_lang_in_notes = _detect_script_mismatch(custom_notes, lang) or _detect_hindi_marathi_confusion(custom_notes, lang)
+    if wrong_lang_in_notes:
+        print(f"  ⚠ Discarding custom notes for '{lang}' — detected as {wrong_lang_in_notes}, "
+              f"not {lang}'s own custom notes.")
+        custom_notes = ""
+
     output_text = None
     lang_warnings = []
     script_correction_note = ""
@@ -489,19 +547,18 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         retry_notes = (script_correction_note + "\n\n" + custom_notes).strip() if script_correction_note else custom_notes
         output_text = synthesize_language_prompt(clean_business_logic, relevant_chunks, lang, model=model, custom_notes=retry_notes)
 
-        wrong_script_lang = _detect_script_mismatch(output_text, lang)
+        wrong_script_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
         lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
 
         if wrong_script_lang:
             script_correction_note = (
                 f"CRITICAL CORRECTION — read this first: your previous attempt for this "
-                f"exact request was written almost entirely in {wrong_script_lang}'s script "
-                f"instead of {lang}'s own script. This is not a wording issue, the entire "
-                f"document must be in {lang}'s script from the first sentence onward. Do not "
-                f"repeat that mistake."
+                f"exact request was written almost entirely in {wrong_script_lang} instead "
+                f"of {lang}. This is not a wording issue, the entire document must be in "
+                f"{lang} from the first sentence onward. Do not repeat that mistake."
             )
             if attempt < max_retries:
-                print(f"  ⚠ {lang} attempt {attempt + 1} came back in {wrong_script_lang} script, forcing corrective retry...")
+                print(f"  ⚠ {lang} attempt {attempt + 1} came back in {wrong_script_lang}, forcing corrective retry...")
                 continue  # this takes priority over invariant warnings — retry regardless of those
         else:
             script_correction_note = ""
@@ -511,12 +568,12 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         if attempt < max_retries and not wrong_script_lang:
             print(f"  ⟳ {lang} attempt {attempt + 1} had {len(lang_warnings)} warning(s), retrying...")
 
-    # If script mismatch survived every retry, this is severe enough that it must not
-    # ship silently — surface it as an unmissable warning rather than letting a
-    # wrong-language document pass through every other guarantee layer unflagged.
-    final_wrong_script = _detect_script_mismatch(output_text, lang)
-    if final_wrong_script:
-        lang_warnings = [f"CRITICAL: output for '{lang}' is predominantly in {final_wrong_script} script after "
+    # If a wrong-language mismatch survived every retry, this is severe enough that it
+    # must not ship silently — surface it as an unmissable warning rather than letting
+    # a wrong-language document pass through every other guarantee layer unflagged.
+    final_wrong_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
+    if final_wrong_lang:
+        lang_warnings = [f"CRITICAL: output for '{lang}' is predominantly in {final_wrong_lang} after "
                           f"all retries — this document is very likely the wrong language and should not be used "
                           f"as-is."] + lang_warnings
 
