@@ -248,12 +248,39 @@ BUSINESS LOGIC CONTEXT (for relevance only, do not include in output):
 RELEVANT LANGUAGE CHUNKS FOR {language}:
 {chunks_text}{custom_notes_block}"""
 
-    response = client.models.generate_content(
-        model=model,
-        contents=full_prompt,
-        config=_build_config(model, max_output_tokens=16000)
-    )
-    return response.text or ""
+    # Every downstream guarantee layer (custom notes, invariants, script check, review)
+    # operates on whatever text this function returns — none of them ever checked
+    # whether that text was actually complete. A response can hit its own token cap
+    # mid-generation and still come back as a normal-looking string with no error, no
+    # missing-closer punctuation necessarily, nothing that "looks" cut off at a glance.
+    # This checks the API's own finish_reason directly, the one reliable signal for
+    # this, and retries once at double the token budget if the first attempt was
+    # genuinely truncated, rather than letting a silently incomplete document flow
+    # through every later stage untouched.
+    token_budget = 16000
+    text = ""
+    for attempt in range(2):
+        response = client.models.generate_content(
+            model=model,
+            contents=full_prompt,
+            config=_build_config(model, max_output_tokens=token_budget)
+        )
+        text = response.text or ""
+        finish_reason = None
+        try:
+            finish_reason = response.candidates[0].finish_reason
+        except (AttributeError, IndexError, TypeError):
+            pass
+        truncated = finish_reason is not None and any(
+            marker in str(finish_reason).upper() for marker in ("MAX_TOKENS", "LENGTH")
+        )
+        if not truncated:
+            return text
+        if attempt == 0:
+            token_budget *= 2
+            print(f"  ⚠ Synthesis for {language} hit its token limit mid-generation "
+                  f"(finish_reason={finish_reason}) — retrying once at {token_budget} tokens.")
+    return text
 
 
 # ---------- STAGE 5: AI Reviewer / Debugger ----------
