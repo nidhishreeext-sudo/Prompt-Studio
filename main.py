@@ -197,7 +197,9 @@ WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
 - NEVER use markdown pipe-tables ( | col | col | ). That specific syntax is banned.
 - TWO DIFFERENT THINGS, DO NOT CONFUSE THEM:
   1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): keep at most 2-3 of the clearest ones per rule, in prose. These exist to demonstrate a pattern, not to be an exhaustive catalog.
-  2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES (a number-word lookup table, digit-by-digit letter readings, a fixed list of preserved English terms, a set of per-minute time-fusion rules): reproduce this COMPLETELY, every entry, and use a clean bulleted list, one entry per line, NOT a pipe-table and NOT force-collapsed into a run-on paragraph. A list like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable and usable to whoever reads this prompt than the same content buried in a sentence. Never trim, sample, or abbreviate this kind of list with "etc." or similar.
+  2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES — reproduce this COMPLETELY, every entry, never trim, sample, or abbreviate with "etc." or similar. But use the right format for what kind of data it actually is:
+     - MAPPING TABLES (a number-word lookup, digit-by-digit letter readings, per-minute time-fusion rules — anything genuinely two-column, an input mapped to an output): use a clean bulleted list, one entry per line, NOT a pipe-table. A line like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable than the same content buried in a sentence, so this format earns its space.
+     - FLAT VOCABULARY LISTS (a set of preserved English terms, a backchannel word list, a filler list — no mapping, just individual words or short phrases): write these as a single compact comma-separated line, not one bullet per word. There's nothing to "scan" in a one-word bullet the way there is in a mapping, so the bullet formatting there is pure overhead with no readability benefit — every term still survives, just without a wasted line per word.
 - Use simple, short section headers (### Colloquial Speech, ### Numbers, ### Backchannels) — not numbered mega-sections, not sub-headers nested three levels deep.
 - Do not restate the same rule in multiple places or under multiple headers. If two chunks overlap, merge them into one clean statement.
 - Do not add meta-commentary, headers-about-headers, or explanations of why a rule exists — state the rule and move on.
@@ -842,6 +844,48 @@ def resolve_languages(user_input: list) -> list:
     return resolved
 
 
+LANGUAGE_SCOPE_SYSTEM_PROMPT = """You are given a business's raw system prompt for a voice AI agent. Determine whether the business explicitly restricts which spoken languages the agent is allowed to use — for example "converse only in Hindi or English, other languages are not supported", "never speak any other language apart from Hindi, English, and Telugu", or "Kannada is the primary language, switch to English if asked".
+
+If the business states an explicit, closed list of supported languages, output ONLY that list of language names, comma-separated, nothing else (e.g. "Hindi, English").
+
+If the business does not state any such restriction anywhere (no mention of which languages it does or doesn't support), output exactly: NONE
+
+Do not guess or infer a restriction from indirect signals. Only report a restriction that is explicitly and directly stated in the text."""
+
+
+def detect_declared_language_scope(business_logic: str, model: str = DEFAULT_MODEL) -> list:
+    """Reads what languages a business ACTUALLY authorizes, directly from its own
+    prompt, rather than discovering the mismatch only after a document for an
+    unauthorized language has already been generated and someone happens to notice.
+    This is the fix for a recurring, distinct failure pattern seen across several
+    businesses in this pipeline's own history — a business explicitly says something
+    like "converse only in Hindi or English, other languages are not supported," and a
+    request for a different language still produces a fully-formed document for it,
+    because nothing ever checked the request against what the business itself
+    declared. Returns a list of internal language codes if the business states an
+    explicit restriction, or an empty list if it doesn't (in which case no scope
+    warning should be shown — an unrestricted business supporting any requested
+    language is the normal, expected case)."""
+    model = _resolve_model(model)
+    if not business_logic.strip():
+        return []
+    full_prompt = f"{LANGUAGE_SCOPE_SYSTEM_PROMPT}\n\n---BUSINESS PROMPT---\n{business_logic[:6000]}"
+    response = client.models.generate_content(
+        model=model,
+        contents=full_prompt,
+        config=_build_config(model, max_output_tokens=200)
+    )
+    result = (response.text or "").strip()
+    if not result or result.upper() == "NONE":
+        return []
+    declared = []
+    for name in result.split(","):
+        code = LANGUAGE_NAME_MAP.get(name.strip().lower())
+        if code and code not in declared:
+            declared.append(code)
+    return declared
+
+
 # ---------- STAGE 2: Custom Language Notes Extractor ----------
 # This is the fix for a real gap: chunks.json only holds GENERIC, reusable language
 # style rules shared across every business. But a specific business's raw prompt often
@@ -864,7 +908,9 @@ CUSTOM_LANGUAGE_NOTES_SYSTEM_PROMPT = """You are given the raw instruction text 
    - Business-specific example sentences showing exact phrasing for THIS business's own numbers, prices, or terms
    - Any other explicit "say X, never Y" correction that is tied to this business's own facts, names, or terminology, not a generic language style preference
 
-Output ONLY the extracted custom language/speech rules (item 2), removing all flow-control content (item 1) entirely. Do not summarize, paraphrase, shorten, or reword the custom rules — copy them close to verbatim so no specific figure or spelling is lost. If there is genuinely nothing that qualifies as a custom language rule in this text, output nothing at all (an empty response is correct and expected in that case, do not invent content to fill space)."""
+COMPRESS MECHANICALLY-DERIVABLE LISTS — this matters and is easy to get wrong: a source sometimes writes out an exhaustive list that is really just ONE generic pattern repeated many times (e.g. a table pronouncing every year from 2015 to 2026 individually, when every entry follows the exact same "two thousand + [unit word]" pattern with no exceptions). That is NOT a business-specific fact, it's a generic language rule that happens to be formatted as a long list — state the pattern once with 1-2 examples, and drop the rest of the mechanically-identical entries. Do NOT apply this compression to anything genuinely irregular, business-specific, or containing even one exception (e.g. a numbering pattern that breaks for one specific value, a business's own specific correction like "never say twenty-three") — those must stay complete and verbatim. When in doubt about whether a list is a repeated pattern or contains real exceptions, keep it in full; only compress when you are certain every entry is a mechanical restatement of the same rule.
+
+Output ONLY the extracted custom language/speech rules (item 2), removing all flow-control content (item 1) entirely. Do not summarize, paraphrase, shorten, or reword the custom rules — copy them close to verbatim so no specific figure or spelling is lost, EXCEPT for mechanically-derivable lists per the compression rule above. If there is genuinely nothing that qualifies as a custom language rule in this text, output nothing at all (an empty response is correct and expected in that case, do not invent content to fill space)."""
 
 
 def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MODEL, max_retries: int = 1) -> str:

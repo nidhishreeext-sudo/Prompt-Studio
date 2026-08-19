@@ -3,6 +3,7 @@ from main import (
     extract_business_logic,
     generate_language_prompts_multi,
     resolve_languages,
+    detect_declared_language_scope,
     review_language_prompt,
     apply_review_fixes,
     is_flow_json,
@@ -107,15 +108,35 @@ def generate():
     else:
         business_logic = raw_prompt  # already clean — passed through untouched, never re-processed
 
+    # Catches the recurring "generated a language this business never authorized"
+    # pattern at the source, rather than relying on it being noticed after the fact —
+    # this has shown up repeatedly across different businesses (a business explicitly
+    # stating it only supports Hindi and English, and a request for a different
+    # language still silently producing a fully-formed document for it).
+    declared_scope = detect_declared_language_scope(business_logic, model=model)
+    scope_warning = None
+    if declared_scope:
+        out_of_scope = [lang for lang in languages if lang not in declared_scope]
+        if out_of_scope:
+            scope_warning = (
+                f"This business's own prompt explicitly declares it only supports: "
+                f"{', '.join(declared_scope)}. The following requested language(s) are "
+                f"outside that declared scope and were generated anyway, but likely "
+                f"should not be deployed for this business: {', '.join(out_of_scope)}."
+            )
+
     result = generate_language_prompts_multi(business_logic, languages, model=model,
                                                custom_notes_by_language=custom_notes_by_language)
 
-    return jsonify({
+    response = {
         "business_logic": business_logic,
         "language_prompts": result["prompts"],
         "warnings": result["warnings"],  # {lang: [violation strings]} — only present for langs with issues
         "model": model,
-    })
+    }
+    if scope_warning:
+        response["scope_warning"] = scope_warning
+    return jsonify(response)
 
 
 @app.route("/api/review", methods=["POST"])
