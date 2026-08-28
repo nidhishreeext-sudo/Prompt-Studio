@@ -448,6 +448,7 @@ _SCRIPT_RANGES = {
     "ML": (0x0D00, 0x0D7F),  # Malayalam
     "GU": (0x0A80, 0x0AFF),  # Gujarati
     "OD": (0x0B00, 0x0B7F),  # Odia
+    "BN": (0x0980, 0x09FF),  # Bengali
 }
 
 
@@ -829,6 +830,7 @@ LANGUAGE_NAME_MAP = {
     "marathi": "MR", "mr": "MR",
     "telugu": "TE", "te": "TE",
     "odia": "OD", "oriya": "OD", "od": "OD",
+    "bengali": "BN", "bangla": "BN", "bn": "BN",
 }
 
 
