@@ -75,9 +75,9 @@ def _build_config(model: str, max_output_tokens: int | None = None, thinking_lev
 
 # ---------- STAGE 1: Business Logic Extractor ----------
 
-EXTRACTOR_SYSTEM_PROMPT = """You are a prompt-cleaning tool. You will be given a raw AI agent system prompt that mixes business logic (conversation flow, node structure, tool calls, guardrails, knowledge base, agent identity/persona) with language-specific rules (grammar, gender forms, colloquial speech, honorifics, number/currency/date formatting, backchannels, fillers, pronunciation rules, script rules).
+EXTRACTOR_SYSTEM_PROMPT = """You are a prompt-cleaning tool. You will be given a raw AI agent system prompt that mixes business logic (conversation flow, node structure, tool calls, guardrails, knowledge base, agent identity/persona) with language-specific rules (grammar, gender forms, colloquial speech, honorifics, number/currency/date formatting, backchannels, fillers, pronunciation rules, script rules, which spoken language to use and when).
 
-Your job: output ONLY the business logic. Remove every language-specific rule, grammar rule, gender-form rule, colloquial-speech instruction, honorific rule, pronunciation rule, and formatting-of-numbers/dates/currency-in-speech rule.
+Your job: output ONLY the business logic. Remove every language-specific rule, grammar rule, gender-form rule, colloquial-speech instruction, honorific rule, pronunciation rule, formatting-of-numbers/dates/currency-in-speech rule, AND any rule about which spoken language to default to or switch to (e.g. "primary language is Kannada, switch to English if the customer speaks English," "default to Hindi unless the customer requests otherwise"). This last category is easy to miss because it can read like a persona trait rather than an obvious grammar/pronunciation rule — treat any instruction naming a spoken language and describing when to use or change it as a language-specific rule to remove, every time, regardless of how it's phrased or where in the document it appears. This system always generates single-language, non-switching output for whichever language was requested — a leftover "switch to X" instruction from the raw prompt would directly contradict that and must never survive extraction.
 
 Keep everything else, including:
 - Conversation flow, nodes, stages, and turn sequencing (e.g. "ask name first, then mobile in a separate turn").
@@ -244,9 +244,11 @@ CASE 2 — OMISSION: business logic or custom notes sometimes contain a rule tha
 
 Before finishing, scan your own output for the name of any language other than the one you are generating right now. For each one you find: if it's Case 1 (a pronunciation instruction with a fixable name), correct the name. If it's Case 2 (a rule that only makes sense for that other language), delete the sentence entirely. Do not leave a rule in that only makes grammatical or logical sense in a different language than the one you are writing.
 
+NEVER INSTRUCT SWITCHING TO A DIFFERENT SPOKEN LANGUAGE, EVER — this system generates a single, non-switching language prompt per request, and a hard rule guaranteeing that (single language only, never switch, never claim inability to speak it) is always prepended to your output separately. The business logic context below is sometimes the ORIGINAL raw prompt for a business that supported multiple languages with its own switching logic (e.g. "primary language is Kannada, switch to English if the customer speaks English") — that switching behavior is exactly what this system replaces, one clean document per language. Do not reproduce it, reference it, or write your own version of it (e.g. "default to Kannada; switch to English if the customer is clearly speaking English") anywhere in your output, even inside a "Persona" or "Core Style" section where it might otherwise sound like natural framing. Describing the default/primary language itself is fine and often useful (e.g. "you speak Kannada"); describing any condition under which you would switch away from it is never allowed, in any section, regardless of what the business logic implies.
+
 LENGTH BUDGET — HARD, NOT A SUGGESTION: the finished document must land at roughly 3,000 to 3,500 tokens total. This is a large cut from what this kind of document used to run (8,000-10,000 tokens), and hitting it requires you to actually cut, not just to write a little tighter than before. Treat every sentence as something you have to justify keeping, not something you keep by default:
 - One example per rule, not two or three. This is the single biggest lever you have — a rule with three illustrative examples and the same rule with one clear example teach the model the same pattern; the extra two are pure length with zero added correctness.
-- Reference data — number-word tables, digit-by-digit/letter-by-letter readings, time-fusion mappings, preserved-term and backchannel/filler lists — is the one exception and is NEVER trimmed, sampled, or shortened. Every entry given to you must survive. The budget is squeezed entirely out of everything else: prose explaining why a rule exists, transitional sentences between sections, restating context the reader doesn't need, and any example beyond the one you keep.
+- Reference data — number-word tables, digit-by-digit/letter-by-letter readings, time-fusion mappings, preserved-term and backchannel/filler lists — is the one exception and is NEVER trimmed, sampled, or shortened. Every entry given to you must survive, UNCHANGED IN COUNT: reproducing it completely means never removing an entry you were given, it does NOT mean deriving and adding entries you weren't given to make the set feel more complete. If a numbers chunk gives you base digits (1-10) and tens (20, 30... 90) but not the compounds in between, output exactly those — do not derive and list 21, 22, 23... 99 yourself; a fluent speaker of the language (and this model) already knows how to combine "twenty" and "five," a chunk giving you the pieces is not asking you to enumerate every combination. This applies to any reference data with an implied pattern, not numbers alone. The budget is squeezed entirely out of everything else: prose explaining why a rule exists, transitional sentences between sections, restating context the reader doesn't need, and any example beyond the one you keep.
 - Write every general rule as the shortest sentence that still states it correctly and completely. If a rule can be said in one sentence, do not spend two on it.
 - If, even after cutting every extra example and every non-essential sentence, the full set of matched chunks for this business and language genuinely cannot fit a complete and correct document into this budget, do not start dropping whole rules or categories to hit the number — a shorter version of every distinct rule is correct; a complete version of only some rules is not. In that situation, go over budget rather than silently omit a rule, and compress everything as hard as you can first.
 
@@ -542,6 +544,47 @@ def _detect_hindi_marathi_confusion(text: str, expected_lang: str):
     return None
 
 
+# Matches a full sentence instructing the model to switch to a different spoken
+# language (e.g. "switch to English", "switch back to Hindi", "switching into
+# Kannada"). Deliberately requires a language name from this system's own set —
+# not a bare "switch" — since "switch" alone shows up in unrelated contexts (call
+# transfer, gender consistency) that must not be touched.
+_LANGUAGE_SWITCH_PATTERN = re.compile(
+    r'[^.!?\n]*\bswitch(?:es|ing|ed)?\s+(?:back\s+)?(?:to|into)\s+(?:speaking\s+)?'
+    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
+    r'[^.!?\n]*[.!?]?',
+    re.IGNORECASE,
+)
+
+
+def _strip_language_switching_instructions(output_text: str) -> tuple:
+    """Deterministically removes any sentence instructing a switch to a different
+    spoken language — this can only ever contradict the always-on
+    language_commitment guarantee (single language, never switch), which is why
+    this doesn't rely on the extractor or synthesizer prompts alone to keep it out.
+    Both of those reduce the CHANCE it appears; this makes its absence certain.
+
+    Runs on the raw synthesized body BEFORE Guarantee 1 (custom notes) gets a
+    chance to force-append anything, on purpose: a business-specific override
+    that genuinely wants different language behavior (the exact scenario
+    language_commitment's own "a business-specific rule elsewhere in this prompt
+    ... takes precedence" clause exists for) is injected by Guarantee 1 AFTER
+    this runs, so it's never touched — only the generic, unintended kind of
+    switching instruction (leftover business-logic framing bleeding into a
+    "Persona"/"Style" section) gets caught here.
+
+    Returns (cleaned_text, count_removed).
+    """
+    matches = _LANGUAGE_SWITCH_PATTERN.findall(output_text)
+    if not matches:
+        return output_text, 0
+    cleaned = _LANGUAGE_SWITCH_PATTERN.sub('', output_text)
+    cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)  # collapse a run of spaces left where a mid-line sentence was removed
+    cleaned = re.sub(r'\n[ \t]+', '\n', cleaned)  # drop a leading space left on the next line/paragraph start
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned.strip(), len(matches)
+
+
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "",
                             skip_review: bool = False) -> tuple:
@@ -641,6 +684,17 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         lang_warnings = [f"CRITICAL: output for '{lang}' is predominantly in {final_wrong_lang} after "
                           f"all retries — this document is very likely the wrong language and should not be used "
                           f"as-is."] + lang_warnings
+
+    # GUARANTEE 5: never ship a language-switching instruction. Placed here — after
+    # the synthesized body is final but before Guarantee 1 can inject a legitimate
+    # business-specific override — so it structurally cannot contradict the always-on
+    # language_commitment guarantee, regardless of what the extractor or synthesizer
+    # prompts let through. See _strip_language_switching_instructions for why this
+    # ordering matters.
+    output_text, switch_removed = _strip_language_switching_instructions(output_text)
+    if switch_removed:
+        print(f"  ⚠ {lang}: removed {switch_removed} language-switching instruction(s) "
+              f"that contradicted the language_commitment guarantee.")
 
     # GUARANTEE 1: business-specific custom notes. No automated invariant exists for
     # arbitrary free-text custom rules (they're different for every business), so this
