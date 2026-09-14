@@ -5,3 +5,4 @@ venv/
 output/
 *.db
 *.db-journal
+_chunks_backup_before_reduction.json

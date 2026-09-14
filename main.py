@@ -215,7 +215,7 @@ WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
 - Every rule must survive, but express it in tight, flowing prose for general rules — a short paragraph per rule, not a bullet-catalog of every possible case.
 - NEVER use markdown pipe-tables ( | col | col | ). That specific syntax is banned.
 - TWO DIFFERENT THINGS, DO NOT CONFUSE THEM:
-  1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): keep at most 2-3 of the clearest ones per rule, in prose. These exist to demonstrate a pattern, not to be an exhaustive catalog.
+  1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): at this document's length budget, keep exactly ONE — the single clearest one — per rule, in prose. A second or third example is not more helpful, it is pure length with no new information, and this budget cannot afford it.
   2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES — reproduce this COMPLETELY, every entry, never trim, sample, or abbreviate with "etc." or similar. But use the right format for what kind of data it actually is:
      - MAPPING TABLES (a number-word lookup, digit-by-digit letter readings, per-minute time-fusion rules — anything genuinely two-column, an input mapped to an output): use a clean bulleted list, one entry per line, NOT a pipe-table. A line like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable than the same content buried in a sentence, so this format earns its space.
      - FLAT VOCABULARY LISTS (a set of preserved English terms, a backchannel word list, a filler list — no mapping, just individual words or short phrases): write these as a single compact comma-separated line, not one bullet per word. There's nothing to "scan" in a one-word bullet the way there is in a mapping, so the bullet formatting there is pure overhead with no readability benefit — every term still survives, just without a wasted line per word.
@@ -244,7 +244,11 @@ CASE 2 — OMISSION: business logic or custom notes sometimes contain a rule tha
 
 Before finishing, scan your own output for the name of any language other than the one you are generating right now. For each one you find: if it's Case 1 (a pronunciation instruction with a fixable name), correct the name. If it's Case 2 (a rule that only makes sense for that other language), delete the sentence entirely. Do not leave a rule in that only makes grammatical or logical sense in a different language than the one you are writing.
 
-LENGTH BUDGET: the finished document should land roughly between 8,000 and 10,000 tokens total. Stay concise throughout, and be especially disciplined in the Numbers and Currency sections — the chunks below already give you the base digits, tens, and grouping words needed; do not pad this out with additional derived examples (e.g. deriving and listing 21, 22, 23... once 20 and the units are established) or extra currency amount illustrations beyond what's already provided. One or two examples per rule is enough to establish the pattern — more is redundant, not more helpful, and eats into the budget other sections need.
+LENGTH BUDGET — HARD, NOT A SUGGESTION: the finished document must land at roughly 3,000 to 3,500 tokens total. This is a large cut from what this kind of document used to run (8,000-10,000 tokens), and hitting it requires you to actually cut, not just to write a little tighter than before. Treat every sentence as something you have to justify keeping, not something you keep by default:
+- One example per rule, not two or three. This is the single biggest lever you have — a rule with three illustrative examples and the same rule with one clear example teach the model the same pattern; the extra two are pure length with zero added correctness.
+- Reference data — number-word tables, digit-by-digit/letter-by-letter readings, time-fusion mappings, preserved-term and backchannel/filler lists — is the one exception and is NEVER trimmed, sampled, or shortened. Every entry given to you must survive. The budget is squeezed entirely out of everything else: prose explaining why a rule exists, transitional sentences between sections, restating context the reader doesn't need, and any example beyond the one you keep.
+- Write every general rule as the shortest sentence that still states it correctly and completely. If a rule can be said in one sentence, do not spend two on it.
+- If, even after cutting every extra example and every non-essential sentence, the full set of matched chunks for this business and language genuinely cannot fit a complete and correct document into this budget, do not start dropping whole rules or categories to hit the number — a shorter version of every distinct rule is correct; a complete version of only some rules is not. In that situation, go over budget rather than silently omit a rule, and compress everything as hard as you can first.
 
 Output the final language prompt only, no commentary."""
 
@@ -374,7 +378,7 @@ QA REVIEW FINDINGS TO FIX:
 # term is a fixed, non-negotiable word the business explicitly requires preserved, so a
 # precise presence check is both safe and exactly the right tool.
 _VOCABULARY_LIST_CATEGORIES = {
-    "preserve_english_terms", "identity_documents", "lending_insurance_terms",
+    "preserve_english", "identity_documents", "lending_insurance_terms",
     "backchannels", "fillers",
 }
 
@@ -556,6 +560,18 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     """
     relevant_chunks = match_relevant_chunks(clean_business_logic, lang, all_chunks)
 
+    # The "speak only colloquial <language>, never switch, never claim you can't"
+    # rule must appear FIRST in every generated document, unconditionally — this
+    # is a positioning guarantee, not a request the synthesizer LLM can place
+    # wherever it judges best (or drop into the middle of a section, or paraphrase
+    # into something softer). Held out of the chunks handed to synthesis entirely
+    # (so the model never independently restates it elsewhere, which would risk a
+    # duplicate or a paraphrase drifting from the exact required wording) and
+    # prepended verbatim after every other step, including the review/fix pass,
+    # so nothing downstream can move, reword, or remove it.
+    commitment_chunk = next((c for c in relevant_chunks if c["category"] == "language_commitment"), None)
+    synthesis_chunks = [c for c in relevant_chunks if c["category"] != "language_commitment"]
+
     triggered_tags = set()
     for chunk in relevant_chunks:
         triggered_tags.update(chunk.get("tags", []))
@@ -594,7 +610,7 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         # this is not a minor style fix, it's telling the model the whole document was
         # in the wrong language and must not be again.
         retry_notes = (script_correction_note + "\n\n" + custom_notes).strip() if script_correction_note else custom_notes
-        output_text = synthesize_language_prompt(clean_business_logic, relevant_chunks, lang, model=model, custom_notes=retry_notes)
+        output_text = synthesize_language_prompt(clean_business_logic, synthesis_chunks, lang, model=model, custom_notes=retry_notes)
 
         wrong_script_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
         lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
@@ -706,7 +722,23 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     if not skip_review and _review_found_issues(review_text):
         output_text = apply_review_fixes(clean_business_logic, output_text, review_text, lang, model=DEFAULT_REVIEW_MODEL)
 
+    # Deterministic positioning guarantee (see note above commitment_chunk): this
+    # runs last, after every other step including the review/fix pass, so the
+    # language-commitment rule is guaranteed to be the literal first thing in the
+    # document, verbatim, no matter what the model produced.
+    if commitment_chunk:
+        output_text = commitment_chunk["content"].strip() + "\n\n" + output_text.lstrip()
+
     return lang, output_text, lang_warnings
+
+
+# A contrast conjunction after a clean-sounding opener ("looks good overall, but the
+# numbers section is missing currency handling entirely") means a real caveat follows —
+# the same class of problem _has_nearby_negation solves above for keyword triggers: a
+# positive signal sitting next to a flip-word must not be read as positive. This list is
+# deliberately small and literal (not "although", not "yet") to match exactly what was
+# asked for, rather than guessing at a broader set.
+_REVIEW_CONTRAST_CUES = ["but", "however", "though", "except", "aside from"]
 
 
 def _review_found_issues(review_text: str) -> bool:
@@ -714,10 +746,17 @@ def _review_found_issues(review_text: str) -> bool:
     response. The reviewer is instructed to say so in one line when nothing is wrong, so a
     short response containing one of these phrases (and no bullet-style findings) means
     skip the fix step — there's nothing to correct and re-running synthesis on a clean
-    prompt only risks introducing a new problem where there wasn't one."""
+    prompt only risks introducing a new problem where there wasn't one.
+
+    A contrast conjunction overrides the clean-signal check entirely rather than being
+    weighed against it: "looks good, but X" is exactly the shape a single real finding
+    takes when the reviewer leads with a pleasantry, and no length or clean-phrase
+    threshold should be able to out-vote that."""
     if not review_text or not review_text.strip():
         return False
     lowered = review_text.lower()
+    if any(re.search(r'\b' + re.escape(cue) + r'\b', lowered) for cue in _REVIEW_CONTRAST_CUES):
+        return True
     clean_signals = ["nothing wrong", "no issues", "no gaps", "looks good", "looks fine",
                       "no missing", "everything is covered", "no problems found", "no concerns"]
     is_short = len(review_text.strip()) < 200
