@@ -435,6 +435,57 @@
                 transform: rotate(45deg);
             }
 
+        .name-input {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 13px;
+            width: 140px;
+        }
+
+            .name-input::placeholder {
+                color: var(--text-faint);
+            }
+
+        .feedback-panel {
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+            flex-shrink: 0;
+        }
+
+            .feedback-panel textarea {
+                width: 100%;
+                min-height: 60px;
+                resize: vertical;
+                border: 1px solid var(--border-strong);
+                border-radius: var(--radius-md);
+                background: var(--surface);
+                color: var(--text);
+                font-size: 13px;
+                padding: 8px 10px;
+                font-family: inherit;
+                box-sizing: border-box;
+            }
+
+        .feedback-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+        }
+
+            .feedback-row input[type="text"] {
+                padding: 8px 10px;
+                border-radius: var(--radius-md);
+                border: 1px solid var(--border-strong);
+                background: var(--surface);
+                color: var(--text);
+                font-size: 13px;
+                width: 160px;
+            }
+
         .toolbar-spacer {
             flex: 1;
         }
@@ -795,6 +846,9 @@
             <button class="btn btn-ghost" id="downloadBtn">Download result</button>
             <button class="btn btn-ghost" id="resetBtn">Reset</button>
 
+            <input type="text" id="userNameInput" class="name-input" placeholder="Your name"
+                   title="Used to attribute generations and feedback in the usage log — asked once per session">
+
             <div class="toolbar-spacer"></div>
             <div class="status-pill" id="statusPill"><span class="status-dot"></span><span id="statusText">Idle</span></div>
         </div>
@@ -820,6 +874,9 @@
                         <button class="btn btn-ghost" id="editBtn" title="Edit manually" style="padding:6px 10px;font-size:12px;">
                             ✏️ Edit
                         </button>
+                        <button class="btn btn-ghost" id="feedbackBtn" title="Add feedback about this generation" style="padding:6px 10px;font-size:12px;" disabled>
+                            💬 Feedback
+                        </button>
                         <button class="icon-btn" id="copyBtn" title="Copy">
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3" /><path d="M2.5 9.5V2.5C2.5 2 2.9 1.5 3.5 1.5H9.5" stroke="currentColor" stroke-width="1.3" /></svg>
                         </button>
@@ -832,6 +889,7 @@
                         <p>Business logic and per-language prompts will appear here once you generate.</p>
                     </div>
                 </div>
+                <div class="feedback-panel" id="feedbackPanel" style="display:none;"></div>
             </div>
         </div>
 
@@ -861,6 +919,10 @@
         let activeOutputTab = "business_logic";
         let isEditing = false;
         let reviewCache = {};
+        // "For the session" per spec — sessionStorage clears when the tab closes,
+        // unlike localStorage, so a shared/kiosk machine doesn't silently carry one
+        // person's name into the next person's generations after they leave.
+        let sessionUserName = sessionStorage.getItem("promptStudioUserName") || "";
 
         const SAMPLE_PROMPT = `You are Sona, a sales representative from Muthoot Finance Gold Loan team.
 Refer to yourself only in feminine Hindi verb forms (for example मैं बोल रही हूँ).
@@ -887,6 +949,7 @@ Ask how much loan amount they are looking for.`;
         const langTriggerLabel = el("langTriggerLabel");
         const outputTabs = el("outputTabs");
         const outputBody = el("outputBody");
+        const feedbackPanel = el("feedbackPanel");
         const toast = el("toast");
 
         // ---------- Theme ----------
@@ -914,6 +977,7 @@ Ask how much loan amount they are looking for.`;
             initTheme();
             renderLangList();
             updateLangTrigger();
+            el("userNameInput").value = sessionUserName;
             await loadModels();
             bindEvents();
         }
@@ -923,6 +987,13 @@ Ask how much loan amount they are looking for.`;
                 const res = await fetch("/api/models");
                 const data = await res.json();
                 currentModel = data.default;
+
+                // With a single supported model, a dropdown has nothing to offer — hide it
+                // entirely instead of showing a selector with one unchangeable option.
+                if (data.models.length <= 1) {
+                    modelSelectEl.style.display = "none";
+                    return;
+                }
 
                 // Group models by their "group" field (Flash / Pro) in the order they first appear
                 const groups = {};
@@ -1005,6 +1076,11 @@ Ask how much loan amount they are looking for.`;
                 inputCharCount.textContent = `${inputArea.value.length} chars`;
             });
 
+            el("userNameInput").addEventListener("input", (e) => {
+                sessionUserName = e.target.value;
+                sessionStorage.setItem("promptStudioUserName", sessionUserName);
+            });
+
             langTrigger.addEventListener("click", (e) => {
                 langPanel.classList.toggle("open");
                 e.stopPropagation();
@@ -1044,7 +1120,13 @@ Ask how much loan amount they are looking for.`;
                 inputArea.value = "";
                 inputCharCount.textContent = "0 chars";
                 lastResult = null;
+                closeFeedbackPanel();
                 renderEmptyOutput();
+            });
+
+            el("feedbackBtn").addEventListener("click", () => {
+                if (feedbackPanel.style.display === "none") openFeedbackPanel();
+                else closeFeedbackPanel();
             });
 
             el("copyBtn").addEventListener("click", () => {
@@ -1155,6 +1237,58 @@ Ask how much loan amount they are looking for.`;
           <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M8 8H32V32H8V8Z" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/><path d="M20 15V25M15 20H25" stroke="currentColor" stroke-width="2"/></svg>
           <p>Business logic and per-language prompts will appear here once you generate.</p>
         </div>`;
+            el("feedbackBtn").disabled = true;
+            closeFeedbackPanel();
+        }
+
+        // ---------- Feedback ----------
+        function closeFeedbackPanel() {
+            feedbackPanel.style.display = "none";
+            feedbackPanel.innerHTML = "";
+        }
+
+        function openFeedbackPanel() {
+            if (!lastResult || !lastResult.generation_id) {
+                showToast("This generation wasn't logged, so feedback can't be attached to it");
+                return;
+            }
+            feedbackPanel.style.display = "block";
+            feedbackPanel.innerHTML = `
+        <textarea id="feedbackText" placeholder="What's wrong, or what could be better about this output?"></textarea>
+        <div class="feedback-row">
+          <input type="text" id="feedbackName" placeholder="Your name" value="${escapeHtml(sessionUserName)}">
+          <button class="btn btn-primary" id="feedbackSubmitBtn" style="padding:8px 14px;font-size:13px;">Submit feedback</button>
+        </div>`;
+            el("feedbackSubmitBtn").addEventListener("click", submitFeedback);
+        }
+
+        async function submitFeedback() {
+            const commenterName = el("feedbackName").value.trim();
+            const feedbackText = el("feedbackText").value.trim();
+            if (!feedbackText) { showToast("Write some feedback first"); return; }
+
+            const btn = el("feedbackSubmitBtn");
+            btn.disabled = true;
+            btn.textContent = "Submitting…";
+            try {
+                const res = await fetch("/api/comment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        generation_id: lastResult.generation_id,
+                        commenter_name: commenterName,
+                        feedback_text: feedbackText,
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Could not submit feedback");
+                showToast("Feedback submitted — thank you");
+                closeFeedbackPanel();
+            } catch (err) {
+                showToast(err.message || "Could not submit feedback");
+                btn.disabled = false;
+                btn.textContent = "Submit feedback";
+            }
         }
 
         function getActiveOutputText() {
@@ -1164,6 +1298,7 @@ Ask how much loan amount they are looking for.`;
         }
 
         function renderOutput() {
+            el("feedbackBtn").disabled = !lastResult.generation_id;
             const langs = Object.keys(lastResult.language_prompts || {});
             const showBusinessLogicTab = lastResult.mode === "extract";
             const tabs = [
@@ -1230,8 +1365,15 @@ Ask how much loan amount they are looking for.`;
             if (!raw) { showToast("Paste a prompt first"); return; }
             if (selectedLanguages.size === 0) { showToast("Select at least one language"); return; }
 
+            if (!sessionUserName.trim()) {
+                showToast("Enter your name first — it's used to attribute this generation");
+                el("userNameInput").focus();
+                return;
+            }
+
             generateBtn.disabled = true;
             setStatus("generating", "Generating…");
+            closeFeedbackPanel(); // any open feedback form referred to the previous generation_id
 
             try {
                 const res = await fetch("/api/generate", {
@@ -1242,6 +1384,7 @@ Ask how much loan amount they are looking for.`;
                         mode: currentMode,
                         languages: Array.from(selectedLanguages),
                         model: currentModel,
+                        user_name: sessionUserName.trim(),
                     })
                 });
                 const data = await res.json();

@@ -1,4 +1,10 @@
+import os
+import hmac
+import traceback
+
 from flask import Flask, request, jsonify, send_from_directory
+
+import db
 from main import (
     extract_business_logic,
     generate_language_prompts_multi,
@@ -17,6 +23,7 @@ from main import (
 )
 
 app = Flask(__name__, static_folder="static")
+db.init_db()
 
 
 @app.errorhandler(Exception)
@@ -24,7 +31,6 @@ def handle_any_error(e):
     """Catch-all so the frontend always gets JSON back, never Flask's default
     HTML error page — that HTML is what causes 'Unexpected token <' on the
     frontend when something breaks server-side (bad API key, SDK error, etc.)."""
-    import traceback
     traceback.print_exc()  # still shows the real traceback in Render logs
     return jsonify({"error": str(e)}), 500
 
@@ -50,6 +56,7 @@ def generate():
     mode = data.get("mode")  # "extract" or "scoped"
     requested_languages = data.get("languages", [])
     model = data.get("model", DEFAULT_MODEL)
+    user_name = (data.get("user_name") or "").strip()
 
     if model not in SUPPORTED_MODELS:
         return jsonify({"error": f"Unknown model '{model}'"}), 400
@@ -128,15 +135,49 @@ def generate():
     result = generate_language_prompts_multi(business_logic, languages, model=model,
                                                custom_notes_by_language=custom_notes_by_language)
 
+    # Logging is additive only — every existing response field above is
+    # untouched, and a DB failure here (see db.insert_generation's own
+    # try/except) never turns into a failed generation for the user. The one
+    # new field, generation_id, is what lets the frontend attach a comment
+    # (Task 2) to this specific row; it's None if logging failed, in which
+    # case the frontend should just skip offering the comment box.
+    generation_id = db.insert_generation(
+        user_name=user_name,
+        raw_prompt=raw_prompt,
+        business_logic=business_logic,
+        languages_requested=",".join(languages),
+        language_prompts=result["prompts"],
+        model_used=model,
+    )
+
     response = {
         "business_logic": business_logic,
         "language_prompts": result["prompts"],
         "warnings": result["warnings"],  # {lang: [violation strings]} — only present for langs with issues
         "model": model,
+        "generation_id": generation_id,
     }
     if scope_warning:
         response["scope_warning"] = scope_warning
     return jsonify(response)
+
+
+@app.route("/api/comment", methods=["POST"])
+def add_comment():
+    data = request.json or {}
+    generation_id = data.get("generation_id")
+    commenter_name = (data.get("commenter_name") or "").strip()
+    feedback_text = (data.get("feedback_text") or "").strip()
+
+    if not generation_id:
+        return jsonify({"error": "Missing generation_id"}), 400
+    if not feedback_text:
+        return jsonify({"error": "Feedback text is empty"}), 400
+
+    ok = db.insert_comment(generation_id, commenter_name, feedback_text)
+    if not ok:
+        return jsonify({"error": "Could not save comment — the generation it refers to may not exist"}), 400
+    return jsonify({"status": "ok"})
 
 
 @app.route("/api/review", methods=["POST"])
@@ -168,6 +209,39 @@ def apply_review():
 
     fixed_prompt = apply_review_fixes(business_logic, language_prompt, review_text, language, model=DEFAULT_REVIEW_MODEL)
     return jsonify({"language_prompt": fixed_prompt, "model": DEFAULT_REVIEW_MODEL})
+
+
+@app.route("/api/admin/send_daily_report", methods=["POST"])
+def send_daily_report():
+    """Internal-only trigger for the daily Excel report + email (report.py).
+    Not reachable by any normal user flow — nothing in the frontend calls
+    this. Meant to be hit by a Render Cron Job (or an equivalent external
+    scheduler) once a day, authenticated by a shared secret rather than by
+    trusting the caller's identity or IP.
+
+    CRON_SECRET must be set for this route to do anything at all — if it's
+    missing, every request is refused with 503 rather than the route falling
+    open. hmac.compare_digest avoids leaking the secret's value through
+    response-time timing differences on a naive '==' comparison.
+    """
+    cron_secret = os.getenv("CRON_SECRET")
+    if not cron_secret:
+        return jsonify({"error": "Report trigger is not configured on this server."}), 503
+
+    provided = request.headers.get("X-Cron-Secret", "")
+    if not provided or not hmac.compare_digest(provided, cron_secret):
+        return jsonify({"error": "Forbidden"}), 403
+
+    from report import generate_and_send_daily_report  # imported here, not at module load,
+    # so a missing 'requests'/'openpyxl' dependency or misconfigured report.py can never
+    # break app startup or any other route — it only surfaces when this route is actually hit.
+    try:
+        result = generate_and_send_daily_report()
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to send report: {e}"}), 500
+
+    return jsonify({"status": "sent", "rows": result["rows"], "date": result["date"]})
 
 
 if __name__ == "__main__":

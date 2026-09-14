@@ -16,24 +16,32 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 # ---------- MODEL CONFIG ----------
 
 SUPPORTED_MODELS = {
-    "gemini-2.5-flash": {
-        "label": "Gemini 2.5 Flash",
-        "group": "Flash",
-        "supports_thinking_level": False,
-    },
-    "gemini-3.5-flash": {
-        "label": "Gemini 3.5 Flash",
-        "group": "Flash",
-        "supports_thinking_level": True,
-    },
     "gemini-3.1-pro-preview": {
         "label": "Gemini 3.1 Pro",
         "group": "Pro",
         "supports_thinking_level": True,
+        # No explicit level list — trusted with whatever thinking_level it's
+        # called with (this was already the behavior before per-model level
+        # lists existed, and this codebase never calls it with anything other
+        # than the "low" default).
+    },
+    "gemini-3.6-flash": {
+        "label": "Gemini 3.6 Flash",
+        "group": "Flash",
+        "supports_thinking_level": True,
+        "thinking_levels": ["MINIMAL", "LOW", "MEDIUM", "HIGH"],
+    },
+    "gemini-3.8-flash": {
+        "label": "Gemini 3.8 Flash",
+        "group": "Flash",
+        "supports_thinking_level": True,
+        # MINIMAL is deliberately absent — 3.8 Flash doesn't support it per
+        # Google's docs, so _build_config below must never send it.
+        "thinking_levels": ["LOW", "MEDIUM", "HIGH"],
     },
 }
 
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-3.1-pro-preview"
 # Review (and applying review fixes) benefits more from a stronger model than generation does,
 # since it needs to catch subtle contradictions rather than just reproduce chunk content.
 DEFAULT_REVIEW_MODEL = "gemini-3.1-pro-preview"
@@ -53,7 +61,14 @@ def _build_config(model: str, max_output_tokens: int | None = None, thinking_lev
         kwargs["max_output_tokens"] = max_output_tokens
 
     if SUPPORTED_MODELS[model]["supports_thinking_level"]:
-        kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=thinking_level)
+        level = thinking_level
+        allowed_levels = SUPPORTED_MODELS[model].get("thinking_levels")
+        if allowed_levels and level.upper() not in allowed_levels:
+            # e.g. "minimal" isn't valid for gemini-3.8-flash — fall back to
+            # "low" rather than sending a level the model will reject; "low"
+            # is valid for every model in SUPPORTED_MODELS above.
+            level = "low"
+        kwargs["thinking_config"] = types.ThinkingConfig(thinking_level=level)
 
     return types.GenerateContentConfig(**kwargs)
 
@@ -77,6 +92,10 @@ SURGICAL STRIPPING — the trickiest failure mode: a single sentence often conta
 - Example: "read the pincode back digit by digit with a natural pause between groups and ask for confirmation" — "digit by digit" here is doing double duty: it's a pronunciation detail (language layer) AND a business validation method (confirm each digit separately, not the number as a whole). Keep the business method: "read the pincode back and ask for confirmation, confirming each digit individually" — do NOT collapse it down to just "read the pincode back and ask for confirmation," that silently deletes a real validation requirement.
 - Example: "read back the full date in spoken Kannada words, the confirmed time, and the branch name" — "in spoken Kannada words" is the language qualifier to delete. "the full date" is a business requirement (the summary must include the date) and must be kept: "read back the full date, the confirmed time, and the branch name."
 - General rule: never let a language-specific qualifier attached to a business noun (date, digit, number, amount) delete the noun itself. Strip the qualifier, keep the noun and its requirement.
+
+HARDCODED EXACT-WORDING SCRIPT IN ONE SPECIFIC LANGUAGE — another distinct failure mode: a business prompt sometimes gives a mandatory line as a literal quoted sentence already written out in one specific spoken language (e.g. an "openingStatement" or a "say exactly" block written entirely in Hindi, with variables like {{customerName}} embedded in it). That literal sentence is NOT reusable across languages — the business logic you output here is shared by every target language's generation, and a hardcoded Hindi sentence carried through unchanged would surface verbatim inside a Kannada or Tamil output. In this case, do not keep the literal foreign-language sentence itself; instead restate the SAME instruction in English, generic and self-contained: what must be communicated, in what order, with which variables, and any part that is genuinely fixed regardless of language (a brand name that must not be translated, a toll-free number, a compliance disclosure that must stay in English even inside another language's script). Keep every variable placeholder and every sequencing/compliance requirement exactly as strict as the original ("this must be the very first line," "do not proceed until this is confirmed," etc.) — only the literal source-language sentence itself gets generalized into an instruction, never dropped or loosened.
+- Example: `openingStatement: "Hello, मैं चोलामंडलम से मिकेश बोल रहा हूँ। क्या मेरी बात {{customerName}} जी से हो रही है?"` becomes something like: "Opening line (say this first, before anything else): greet the customer, introduce yourself as Mikesh from Chola, then ask to confirm you are speaking with {{customerName}}." The requirement (greet, self-introduce as Mikesh from Chola, confirm identity, use the name exactly once here) is business logic and must be kept in full; the literal Hindi wording is not.
+- This does NOT apply to a business term, brand name, or acronym that is meant to stay in English/its original form inside every language's output (e.g. "always say 'Unlimited' in English, never translate it") — that is a genuine cross-language constraint and must be kept exactly as written, quotes and all.
 
 CONVERSATIONAL PACING AND TURN-TAKING RULES ARE BUSINESS LOGIC, NOT LANGUAGE RULES — keep them in full. This includes: turn-length ceilings (e.g. "fifteen words before pausing"), "ask one question at a time," instructions about not repeating the same phrasing across consecutive turns, instructions to phrase lines differently each time, and any scope-limiting instruction about what to read aloud (e.g. "read only the branch name and address"). None of these are about HOW to pronounce something in a specific language, they are rules about conversational structure and must be preserved exactly like any other guardrail.
 
@@ -123,7 +142,7 @@ TAG_TRIGGERS = {
 
 ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "call_closing",
                    "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation",
-                   "hold_pause", "interruption", "preserve_english_terms", "language_switching",
+                   "hold_pause", "interruption", "preserve_english_terms", "language_commitment",
                    "no_echo"]
 
 
