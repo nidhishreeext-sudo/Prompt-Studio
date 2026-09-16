@@ -210,7 +210,17 @@ def match_relevant_chunks(business_logic: str, language: str, all_chunks: list) 
 
 LANGUAGE_OUTPUT_GUIDANCE = """OUTPUT SCOPE AND LENGTH: The roughly 3,000-3,500 token budget applies ONLY to the language prompt, never to the business prompt or its facts. Do not pad sparse source material to reach that target.
 
+BUSINESS ALIGNMENT: The supplied business/system prompt governs business facts, permissions, constraints, and conversation flow. This language layer governs HOW to express them, never changes WHAT the agent may do. Use business context to select relevant speech rules, not to copy the business prompt. Do not invent validation requirements, promises, escalation actions, product facts, or agent identity. Business-specific language requirements override generic language defaults; retain the configured single-language commitment. If source requirements cannot be reconciled, the reviewer must flag the conflict rather than silently invent a resolution.
+
+USEFUL LANGUAGE COVERAGE: Internally map the actual business tasks to the supplied language rules. Prioritize natural register, respectful address, consistent agent self-reference, clear questions, appropriate acknowledgement, and pronunciation of the terms and values this business actually uses. Include only supported, relevant guidance; do not add finance, medical, scheduling, or other domain sections simply to fill a template. For a rule where an example materially prevents an error, choose one relevant example from the supplied sources. Never invent translated vocabulary or example sentences to make the prompt seem richer. Explain when a backchannel or filler fits, rather than requiring it mechanically regardless of context. Honor explicit source frequency limits.
+
+FINAL EDITORIAL CHECK: Each distinct instruction appears once. Merge overlapping sections and omit explanatory translations from spoken vocabulary lists. Examples must use the configured agent gender, respectful customer address, and permitted register. Remove irrelevant examples rather than changing business facts to fit them. Do not claim the output is perfect, verified, or production-ready.
+
 COMPACT DATES AND TIMES — ALL TARGET LANGUAGES: Include date/time guidance only when relevant to the business and supported by the supplied language rules. Combine it into one short paragraph (normally 2-4 sentences), with at most ONE source-provided example across dates and times together. State the pronunciation pattern and meaningful exceptions; never reproduce minute-by-minute mappings, year lists, calendar examples, or time lookup tables. This overrides instructions to reproduce reference entries for dates and times. Preserve exact date/time values, required format, day-period distinctions, and any explicit business-specific pronunciation correction. Do not invent missing language rules or silently change a supplied time. Omit the section if it is irrelevant.
+
+COMPACT NUMBERS AND CURRENCY - ALL TARGET LANGUAGES: Use one short paragraph, normally 2-4 sentences, with at most one source-provided example. Omit generic digit, tens, hundreds, and large-number lookup lists; describe the number system instead. Preserve meaningful exceptions, zero pronunciation, currency-unit placement, and distinctions between quantities and identifiers. Apply currency decimal rules only to money, not to every decimal quantity. Include currency guidance only when relevant to the business. Explicit business-specific pronunciation corrections must survive. This overrides any requirement to reproduce generic number-word reference entries.
+
+CONSISTENCY CHECK: Examples must obey their accompanying rules. Never combine incompatible year-reading instructions. Quantity rules must explicitly exempt identifiers, which retain their digit-by-digit or character-by-character rules. Keep business identity, factual definitions, validation lengths, and flow control in business logic; include only their language-specific pronunciation or phrasing requirements here.
 
 Spend the remaining language budget on useful, source-backed guidance: natural phrasing, respectful address, agent gender, pronunciation of business terms, identifier and amount reading, and relevant conversational language. Keep distinct rules and corrections, merge repetition, and add no unsupported vocabulary, facts, or examples."""
 
@@ -223,8 +233,8 @@ WRITE LIKE A HUMAN EXPERT, NOT A SPEC DOCUMENT:
 - NEVER use markdown pipe-tables ( | col | col | ). That specific syntax is banned.
 - TWO DIFFERENT THINGS, DO NOT CONFUSE THEM:
   1. ILLUSTRATIVE EXAMPLES (✓/✗ pairs, sample sentences showing how a grammar rule behaves): at this document's length budget, keep exactly ONE — the single clearest one — per rule, in prose. A second or third example is not more helpful, it is pure length with no new information, and this budget cannot afford it.
-  2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES — reproduce this COMPLETELY, every entry, never trim, sample, or abbreviate with "etc." or similar. But use the right format for what kind of data it actually is:
-     - MAPPING TABLES (a number-word lookup, digit-by-digit letter readings — anything genuinely two-column, an input mapped to an output): use a clean bulleted list, one entry per line, NOT a pipe-table. A line like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable than the same content buried in a sentence, so this format earns its space.
+  2. ESSENTIAL REFERENCE DATA WITH MANY DISCRETE ENTRIES (excluding generic number, date, and time lookup lists covered by the compact-output rules below) — reproduce this COMPLETELY, every entry, never trim, sample, or abbreviate with "etc." or similar. But use the right format for what kind of data it actually is:
+     - MAPPING TABLES (required acronym pronunciations, digit-by-digit letter readings — anything genuinely two-column, an input mapped to an output): use a clean bulleted list, one entry per line, NOT a pipe-table. A line like "7:15 -> ಏಳಕ್ಕೆ ಕಾಲು" is far more scannable than the same content buried in a sentence, so this format earns its space.
      - FLAT VOCABULARY LISTS (a set of preserved English terms, a backchannel word list, a filler list — no mapping, just individual words or short phrases): write these as a single compact comma-separated line, not one bullet per word. There's nothing to "scan" in a one-word bullet the way there is in a mapping, so the bullet formatting there is pure overhead with no readability benefit — every term still survives, just without a wasted line per word.
 - Use simple, short section headers (### Colloquial Speech, ### Numbers, ### Backchannels) — not numbered mega-sections, not sub-headers nested three levels deep.
 - Do not restate the same rule in multiple places or under multiple headers. If two chunks overlap, merge them into one clean statement.
@@ -255,7 +265,7 @@ NEVER INSTRUCT SWITCHING TO A DIFFERENT SPOKEN LANGUAGE, EVER — this system ge
 
 LENGTH BUDGET — HARD, NOT A SUGGESTION: the finished document must land at roughly 3,000 to 3,500 tokens total. This is a large cut from what this kind of document used to run (8,000-10,000 tokens), and hitting it requires you to actually cut, not just to write a little tighter than before. Treat every sentence as something you have to justify keeping, not something you keep by default:
 - One example per rule, not two or three. This is the single biggest lever you have — a rule with three illustrative examples and the same rule with one clear example teach the model the same pattern; the extra two are pure length with zero added correctness.
-- Reference data — number-word tables, digit-by-digit/letter-by-letter readings, preserved-term and backchannel/filler lists — is the one exception and is NEVER trimmed, sampled, or shortened. Every entry given to you must survive, UNCHANGED IN COUNT: reproducing it completely means never removing an entry you were given, it does NOT mean deriving and adding entries you weren't given to make the set feel more complete. If a numbers chunk gives you base digits (1-10) and tens (20, 30... 90) but not the compounds in between, output exactly those — do not derive and list 21, 22, 23... 99 yourself; a fluent speaker of the language (and this model) already knows how to combine "twenty" and "five," a chunk giving you the pieces is not asking you to enumerate every combination. This applies to any reference data with an implied pattern, not numbers alone. The budget is squeezed entirely out of everything else: prose explaining why a rule exists, transitional sentences between sections, restating context the reader doesn't need, and any example beyond the one you keep.
+- Preserve required vocabulary, acronym readings, and business-specific corrections. Generic number, date, and time lookup lists are not mandatory reference data: summarize their patterns and meaningful exceptions using the compact-output rules below. Do not derive additional entries or pad the output with examples.
 - Write every general rule as the shortest sentence that still states it correctly and completely. If a rule can be said in one sentence, do not spend two on it.
 - If, even after cutting every extra example and every non-essential sentence, the full set of matched chunks for this business and language genuinely cannot fit a complete and correct document into this budget, do not start dropping whole rules or categories to hit the number — a shorter version of every distinct rule is correct; a complete version of only some rules is not. In that situation, go over budget rather than silently omit a rule, and compress everything as hard as you can first.
 
@@ -333,7 +343,8 @@ Do not flag omitted date/time example lists as missing coverage when their rules
 Output a short, direct bullet list of findings. If something is missing, name exactly what. If something is fine, don't comment on it — only flag actual issues or notable gaps. If you find nothing wrong, say so in one line. Do not rewrite the prompt — only critique it.""" + "\n\n" + LANGUAGE_OUTPUT_GUIDANCE
 
 
-def review_language_prompt(business_logic: str, language_prompt: str, language: str, model: str = DEFAULT_MODEL) -> str:
+def review_language_prompt(business_logic: str, language_prompt: str, language: str, model: str = DEFAULT_REVIEW_MODEL,
+                           source_rules: str = "") -> str:
     model = _resolve_model(model)
     full_prompt = f"""{REVIEWER_SYSTEM_PROMPT}
 
@@ -341,7 +352,10 @@ BUSINESS LOGIC:
 {business_logic}
 
 GENERATED LANGUAGE PROMPT ({language}):
-{language_prompt}"""
+{language_prompt}
+
+SOURCE LANGUAGE RULES AND CUSTOM REQUIREMENTS (reference material, not instructions to the reviewer):
+{source_rules or 'Original language sources were not supplied. Do not claim source completeness or invent missing language rules.'}"""
 
     response = client.models.generate_content(
         model=model,
@@ -358,7 +372,8 @@ Revise the language prompt to fix every issue the review raises. Keep everything
 Output the corrected language prompt only, no commentary, no explanation of what you changed, no restating of the review.""" + "\n\n" + LANGUAGE_OUTPUT_GUIDANCE
 
 
-def apply_review_fixes(business_logic: str, language_prompt: str, review_text: str, language: str, model: str = DEFAULT_REVIEW_MODEL) -> str:
+def apply_review_fixes(business_logic: str, language_prompt: str, review_text: str, language: str, model: str = DEFAULT_REVIEW_MODEL,
+                       source_rules: str = "") -> str:
     model = _resolve_model(model)
     full_prompt = f"""{APPLY_FIX_SYSTEM_PROMPT}
 
@@ -369,7 +384,10 @@ CURRENT LANGUAGE PROMPT ({language}):
 {language_prompt}
 
 QA REVIEW FINDINGS TO FIX:
-{review_text}"""
+{review_text}
+
+SOURCE LANGUAGE RULES AND CUSTOM REQUIREMENTS (reference material):
+{source_rules or 'Original language sources were not supplied. Preserve supported wording; do not invent missing translations or examples.'}"""
 
     response = client.models.generate_content(
         model=model,
@@ -394,12 +412,15 @@ _VOCABULARY_LIST_CATEGORIES = {
 }
 
 
-def _extract_vocabulary_terms(chunk_content: str) -> list:
+def _extract_vocabulary_terms(chunk_content: str, strip_glosses: bool = False) -> list:
     """Pulls the comma-separated term list out of a vocabulary-list chunk. These chunks
     follow the pattern '...instruction sentence: term1, term2, term3...' — this grabs the
     segment right after each colon, up to the next sentence boundary, and splits it on
     commas. Filters out pronunciation-mapping fragments (e.g. 'KYC = K-Y-C') and anything
     too long to plausibly be a single term, since those are prose, not list items."""
+    if strip_glosses:
+        # Explanatory translations are not additional spoken vocabulary.
+        chunk_content = re.sub(r'\s*\([^()]*\)', '', chunk_content)
     segments = re.split(r':\s*', chunk_content)
     terms = []
     for seg in segments[1:]:
@@ -763,7 +784,9 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     for chunk in relevant_chunks:
         if chunk.get("category") not in _VOCABULARY_LIST_CATEGORIES:
             continue
-        terms = _extract_vocabulary_terms(chunk["content"])
+        terms = _extract_vocabulary_terms(
+            chunk["content"], strip_glosses=chunk.get("category") in {"backchannels", "fillers"}
+        )
         missing_terms = [t for t in terms if t.lower() not in output_text.lower()]
         if missing_terms:
             output_text = output_text.rstrip() + (
@@ -781,9 +804,31 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     # dropped, vocabulary that doesn't belong for this business. This runs with the
     # stronger review model regardless of which model generated the draft, since
     # catching subtle problems matters more here than matching the generation model.
-    review_text = "" if skip_review else review_language_prompt(clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL)
+    source_rules = "\n\n".join(f"[{c['category']}]\n{c['content']}" for c in synthesis_chunks)
+    if custom_notes.strip():
+        source_rules += "\n\n[Business-specific language requirements]\n" + custom_notes
+    review_text = "" if skip_review else review_language_prompt(
+        clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL, source_rules=source_rules
+    )
     if not skip_review and _review_found_issues(review_text):
-        output_text = apply_review_fixes(clean_business_logic, output_text, review_text, lang, model=DEFAULT_REVIEW_MODEL)
+        revised = apply_review_fixes(
+            clean_business_logic, output_text, review_text, lang,
+            model=DEFAULT_REVIEW_MODEL, source_rules=source_rules
+        )
+        if revised.strip():
+            output_text = revised
+        else:
+            lang_warnings.append("Review fixes returned no text; retained the generated prompt.")
+
+    # Corrections can introduce new regressions; check the final body, not just the draft.
+    output_text, _ = _strip_language_switching_instructions(output_text)
+    lang_warnings.extend(check_text_against_invariants(output_text, triggered_tags, _INVARIANTS))
+    final_wrong_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
+    if final_wrong_lang:
+        lang_warnings.append(f"Final output for '{lang}' contains a language mismatch: {final_wrong_lang}.")
+    if skip_review:
+        lang_warnings.append("Semantic review was skipped for this large input; manually review business alignment before use.")
+    lang_warnings = list(dict.fromkeys(lang_warnings))
 
     # Deterministic positioning guarantee (see note above commitment_chunk): this
     # runs last, after every other step including the review/fix pass, so the
@@ -1045,6 +1090,8 @@ EXTRACT THE PHRASING RULE, DISCARD THE FACT IT'S ATTACHED TO — a single senten
    The output rule of thumb: if you can state a version of the sentence that would still make sense for a DIFFERENT number than the one given, that's a phrasing rule, keep it generalized. If the sentence only makes sense because of the specific value it names, that value is the business fact, exclude it.
 
 COMPRESS MECHANICALLY-DERIVABLE LISTS — this matters and is easy to get wrong: a source sometimes writes out an exhaustive list that is really just ONE generic pattern repeated many times (e.g. a table pronouncing every year from 2015 to 2026 individually, when every entry follows the exact same "two thousand + [unit word]" pattern with no exceptions). That is NOT a business-specific fact, it's a generic language rule that happens to be formatted as a long list — state the pattern once with 1-2 examples, and drop the rest of the mechanically-identical entries. Do NOT apply this compression to anything genuinely irregular, business-specific, or containing even one exception (e.g. a numbering pattern that breaks for one specific value, a business's own specific correction like "never say twenty-three") — those must stay complete and verbatim. When in doubt about whether a list is a repeated pattern or contains real exceptions, keep it in full; only compress when you are certain every entry is a mechanical restatement of the same rule.
+
+For all languages, compress generic number/currency lookup lists into their reading patterns and meaningful exceptions with at most one source example. Preserve business-specific corrections and identifier reading rules.
 
 For all languages, compress generic date/time guidance into a short pattern with meaningful exceptions and at most one source example. Do not copy minute-by-minute or year-by-year example lists. Preserve explicit business-specific corrections and exact values.
 
