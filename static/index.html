@@ -777,6 +777,71 @@
         input[type=file] {
             display: none;
         }
+
+        .custom-instruction-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 24, 40, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+
+        .modal-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-pop);
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            padding: 20px;
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .modal-desc {
+            font-size: 12.5px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+
+        .modal-input {
+            width: 100%;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-sunken);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 70px;
+            box-sizing: border-box;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
@@ -868,6 +933,9 @@
                 <div class="panel-head">
                     <div class="panel-title">Output</div>
                     <div class="panel-actions">
+                        <button class="btn btn-ghost" id="customizeBtn" title="Add a custom instruction for the next generation" style="padding:6px 10px;font-size:12px;">
+                            🎛️ Customise Prompt<span class="custom-instruction-dot" id="customizeDot" style="display:none;"></span>
+                        </button>
                         <button class="btn btn-ghost" id="reviewBtn" title="Ask AI to review this output" style="padding:6px 10px;font-size:12px;">
                             🔍 Review
                         </button>
@@ -897,6 +965,22 @@
 
     <div class="toast" id="toast"></div>
 
+    <div class="modal-overlay" id="customizeModal" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-title">Customise Prompt</div>
+            <div class="modal-desc">
+                Add a specific instruction for this generation. If it matches an existing rule
+                category, it strengthens that category; otherwise it's added as its own section.
+            </div>
+            <textarea class="modal-input" id="customizeInput" placeholder="e.g. Price or currency should always be spoken in English"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" id="customizeClearBtn" style="padding:8px 14px;font-size:13px;">Clear</button>
+                <button class="btn btn-ghost" id="customizeCancelBtn" style="padding:8px 14px;font-size:13px;">Cancel</button>
+                <button class="btn btn-primary" id="customizeSaveBtn" style="padding:8px 14px;font-size:13px;">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ---------- Config ----------
         const LANGUAGES = [
@@ -923,6 +1007,10 @@
         // unlike localStorage, so a shared/kiosk machine doesn't silently carry one
         // person's name into the next person's generations after they leave.
         let sessionUserName = sessionStorage.getItem("promptStudioUserName") || "";
+        // Kept in-memory only, per session — this is a one-off, per-generation
+        // customization, not a permanent change to the chunk library, so it
+        // intentionally does not persist across page reloads.
+        let customInstruction = "";
 
         const SAMPLE_PROMPT = `You are Sona, a sales representative from Muthoot Finance Gold Loan team.
 Refer to yourself only in feminine Hindi verb forms (for example मैं बोल रही हूँ).
@@ -1129,6 +1217,25 @@ Ask how much loan amount they are looking for.`;
                 else closeFeedbackPanel();
             });
 
+            el("customizeBtn").addEventListener("click", openCustomizeModal);
+            el("customizeCancelBtn").addEventListener("click", closeCustomizeModal);
+            el("customizeModal").addEventListener("click", (e) => {
+                if (e.target.id === "customizeModal") closeCustomizeModal();
+            });
+            el("customizeClearBtn").addEventListener("click", () => {
+                customInstruction = "";
+                el("customizeInput").value = "";
+                updateCustomizeIndicator();
+                closeCustomizeModal();
+                showToast("Custom instruction cleared");
+            });
+            el("customizeSaveBtn").addEventListener("click", () => {
+                customInstruction = el("customizeInput").value.trim();
+                updateCustomizeIndicator();
+                closeCustomizeModal();
+                showToast(customInstruction ? "Custom instruction saved — applies to the next generation" : "Custom instruction cleared");
+            });
+
             el("copyBtn").addEventListener("click", () => {
                 const text = getActiveOutputText();
                 if (!text) return;
@@ -1239,6 +1346,21 @@ Ask how much loan amount they are looking for.`;
         </div>`;
             el("feedbackBtn").disabled = true;
             closeFeedbackPanel();
+        }
+
+        // ---------- Customise Prompt ----------
+        function openCustomizeModal() {
+            el("customizeInput").value = customInstruction;
+            el("customizeModal").style.display = "flex";
+            el("customizeInput").focus();
+        }
+
+        function closeCustomizeModal() {
+            el("customizeModal").style.display = "none";
+        }
+
+        function updateCustomizeIndicator() {
+            el("customizeDot").style.display = customInstruction ? "inline-block" : "none";
         }
 
         // ---------- Feedback ----------
@@ -1385,6 +1507,7 @@ Ask how much loan amount they are looking for.`;
                         languages: Array.from(selectedLanguages),
                         model: currentModel,
                         user_name: sessionUserName.trim(),
+                        custom_instruction: customInstruction,
                     })
                 });
                 const data = await res.json();

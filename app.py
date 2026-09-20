@@ -1,5 +1,3 @@
-import os
-import hmac
 import traceback
 
 from flask import Flask, request, jsonify, send_from_directory
@@ -57,6 +55,7 @@ def generate():
     requested_languages = data.get("languages", [])
     model = data.get("model", DEFAULT_MODEL)
     user_name = (data.get("user_name") or "").strip()
+    custom_instruction = (data.get("custom_instruction") or "").strip()
 
     if model not in SUPPORTED_MODELS:
         return jsonify({"error": f"Unknown model '{model}'"}), 400
@@ -133,7 +132,8 @@ def generate():
             )
 
     result = generate_language_prompts_multi(business_logic, languages, model=model,
-                                               custom_notes_by_language=custom_notes_by_language)
+                                               custom_notes_by_language=custom_notes_by_language,
+                                               custom_instruction=custom_instruction)
 
     # Logging is additive only — every existing response field above is
     # untouched, and a DB failure here (see db.insert_generation's own
@@ -209,39 +209,6 @@ def apply_review():
 
     fixed_prompt = apply_review_fixes(business_logic, language_prompt, review_text, language, model=DEFAULT_REVIEW_MODEL)
     return jsonify({"language_prompt": fixed_prompt, "model": DEFAULT_REVIEW_MODEL})
-
-
-@app.route("/api/admin/send_daily_report", methods=["POST"])
-def send_daily_report():
-    """Internal-only trigger for the daily Excel report + email (report.py).
-    Not reachable by any normal user flow — nothing in the frontend calls
-    this. Meant to be hit by a Render Cron Job (or an equivalent external
-    scheduler) once a day, authenticated by a shared secret rather than by
-    trusting the caller's identity or IP.
-
-    CRON_SECRET must be set for this route to do anything at all — if it's
-    missing, every request is refused with 503 rather than the route falling
-    open. hmac.compare_digest avoids leaking the secret's value through
-    response-time timing differences on a naive '==' comparison.
-    """
-    cron_secret = os.getenv("CRON_SECRET")
-    if not cron_secret:
-        return jsonify({"error": "Report trigger is not configured on this server."}), 503
-
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not provided or not hmac.compare_digest(provided, cron_secret):
-        return jsonify({"error": "Forbidden"}), 403
-
-    from report import generate_and_send_daily_report  # imported here, not at module load,
-    # so a missing 'requests'/'openpyxl' dependency or misconfigured report.py can never
-    # break app startup or any other route — it only surfaces when this route is actually hit.
-    try:
-        result = generate_and_send_daily_report()
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": f"Failed to send report: {e}"}), 500
-
-    return jsonify({"status": "sent", "rows": result["rows"], "date": result["date"]})
 
 
 if __name__ == "__main__":

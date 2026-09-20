@@ -144,7 +144,7 @@ TAG_TRIGGERS = {
 ALWAYS_ON_TAGS = ["colloquial", "honorifics", "agent_gender", "call_opening", "call_closing",
                    "backchannels", "fillers", "numbers_general", "escalation", "sensitive_situation",
                    "hold_pause", "interruption", "preserve_english_terms", "language_commitment",
-                   "no_echo"]
+                   "no_echo", "gender_neutral_guarantee"]
 
 
 _NEGATION_CUES = [
@@ -507,7 +507,7 @@ _SCRIPT_RANGES = {
 }
 
 
-def _detect_script_mismatch(output_text: str, expected_lang: str):
+def _detect_script_mismatch(output_text: str, expected_lang: str, min_total: int = 50):
     """Detects wholesale wrong-language generation — not a stray word or a mismatched
     pronunciation rule (those are caught elsewhere), but an entire document written in
     a different script than the one requested. This happened in production: a request
@@ -520,7 +520,14 @@ def _detect_script_mismatch(output_text: str, expected_lang: str):
     checking it directly catches this specific failure class with certainty rather than
     probability. Returns the wrongly-dominant language code if a mismatch is found, or
     None if the script is correct (or the language has no dedicated script to check,
-    e.g. English)."""
+    e.g. English).
+
+    min_total lets a caller lower the "enough script content to judge reliably" floor
+    below the 50-character default used for whole-document checks — a per-sentence or
+    per-unit check (see _filter_custom_notes_for_wrong_language) needs a much smaller
+    floor, since a single contaminated sentence will rarely reach 50 characters of
+    script on its own, and a fixed document-sized threshold there would let short
+    contaminated fragments through undetected."""
     if expected_lang not in _SCRIPT_RANGES:
         return None
     counts = {lang: 0 for lang in _SCRIPT_RANGES}
@@ -531,7 +538,7 @@ def _detect_script_mismatch(output_text: str, expected_lang: str):
                 counts[lang] += 1
                 break
     total = sum(counts.values())
-    if total < 50:  # not enough script content in the output to judge reliably either way
+    if total < min_total:  # not enough script content in the output to judge reliably either way
         return None
     expected_share = counts[expected_lang] / total
     if expected_share >= 0.3:  # expected script is clearly present, not a wholesale mismatch
@@ -558,20 +565,59 @@ _HI_MR_MARKERS = {
 }
 
 
-def _detect_hindi_marathi_confusion(text: str, expected_lang: str):
+def _detect_hindi_marathi_confusion(text: str, expected_lang: str, min_markers: int = 5):
     """Only runs when expected_lang is HI or MR, since that's the only same-script pair
     in this system. Returns the other language's code if its markers clearly dominate,
-    or None if the expected language's own markers are present as they should be."""
+    or None if the expected language's own markers are present as they should be.
+
+    min_markers lets a caller lower the "enough markers to judge reliably" floor below
+    the whole-document default of 5 — see _detect_script_mismatch's min_total for why a
+    per-unit check needs a smaller floor than a whole-document one."""
     if expected_lang not in ("HI", "MR"):
         return None
     other_lang = "MR" if expected_lang == "HI" else "HI"
     expected_count = sum(text.count(m) for m in _HI_MR_MARKERS[expected_lang])
     other_count = sum(text.count(m) for m in _HI_MR_MARKERS[other_lang])
-    if expected_count + other_count < 5:  # too few markers present to judge reliably
+    if expected_count + other_count < min_markers:  # too few markers present to judge reliably
         return None
     if other_count > expected_count * 1.5:
         return other_lang
     return None
+
+
+def _filter_custom_notes_for_wrong_language(custom_notes: str, lang: str) -> tuple:
+    """Checks each individually-checkable unit of custom_notes for wrong-language
+    contamination, rather than treating the notes as one aggregate blob.
+
+    This closes a real gap found in production: a Kannada generation's custom notes
+    were mostly genuine Kannada-language business rules, but also carried one short
+    leftover sentence quoted verbatim from the business's Hindi section. Checking the
+    notes in aggregate (as this used to do) counts script characters across the WHOLE
+    blob before judging — a large block of genuine Kannada script easily pushed the
+    Kannada share back above the "clearly present" threshold, hiding the short Hindi
+    fragment inside it. That's the exact same dilution problem already solved for
+    Guarantee 1's coverage check (a large intact block masking a small dropped one) —
+    it just wasn't ever applied to this wrong-language filter. Checking each unit
+    (roughly one sentence) on its own, with a threshold sized for a single sentence
+    rather than a whole document, catches what the aggregate check structurally
+    cannot: a large correct block can no longer hide a small contaminated one.
+
+    Returns (filtered_notes, discarded_unit_count).
+    """
+    if not custom_notes.strip():
+        return custom_notes, 0
+    units = _split_into_checkable_units(custom_notes)
+    if not units:
+        return custom_notes, 0
+    kept, discarded = [], 0
+    for unit in units:
+        wrong = (_detect_script_mismatch(unit, lang, min_total=15)
+                 or _detect_hindi_marathi_confusion(unit, lang, min_markers=2))
+        if wrong:
+            discarded += 1
+        else:
+            kept.append(unit)
+    return "\n".join(kept), discarded
 
 
 # Matches a full sentence instructing the model to switch to a different spoken
@@ -617,7 +663,7 @@ def _strip_language_switching_instructions(output_text: str) -> tuple:
 
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "",
-                            skip_review: bool = False) -> tuple:
+                            skip_review: bool = False, customization_guarantee_domain: str = None) -> tuple:
     """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread.
 
     GUARANTEE LAYER — this is the part that makes silent content loss structurally
@@ -643,7 +689,16 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     # prepended verbatim after every other step, including the review/fix pass,
     # so nothing downstream can move, reword, or remove it.
     commitment_chunk = next((c for c in relevant_chunks if c["category"] == "language_commitment"), None)
-    synthesis_chunks = [c for c in relevant_chunks if c["category"] != "language_commitment"]
+
+    # Same held-out/deterministic-append mechanism as commitment_chunk above, for the
+    # same reason: gender-neutral customer address must not be left to whatever a given
+    # language's honorifics chunk happens to say (coverage there is inconsistent across
+    # languages) — it's guaranteed present, worded consistently, regardless of what the
+    # synthesizer does on its own.
+    gender_neutral_chunk = next((c for c in relevant_chunks if c["category"] == "gender_neutral_guarantee"), None)
+
+    synthesis_chunks = [c for c in relevant_chunks
+                        if c["category"] not in ("language_commitment", "gender_neutral_guarantee")]
 
     triggered_tags = set()
     for chunk in relevant_chunks:
@@ -665,12 +720,25 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     # different scripts, e.g. Hindi custom notes leaking into Telugu) AND the
     # Hindi/Marathi lexical check (the one pair that shares a script, where the general
     # check alone is blind) — together they cover every language pair in this system.
+    #
+    # Checked per-unit (see _filter_custom_notes_for_wrong_language), not as one
+    # aggregate blob — a production Kannada generation shipped with a Hindi-language
+    # section because a short contaminated sentence was diluted below the aggregate
+    # detection threshold by the larger genuinely-Kannada custom notes around it. The
+    # aggregate check is kept as a second-line defense afterward in case the notes are
+    # wrong-language wholesale (not just one leftover fragment).
+    if custom_notes.strip():
+        custom_notes, discarded_units = _filter_custom_notes_for_wrong_language(custom_notes, lang)
+        if discarded_units:
+            print(f"  ⚠ Discarded {discarded_units} custom-notes line(s) for '{lang}' — "
+                  f"detected as wrong-language contamination.")
+
     wrong_lang_in_notes = None
     if custom_notes.strip():
         wrong_lang_in_notes = _detect_script_mismatch(custom_notes, lang) or _detect_hindi_marathi_confusion(custom_notes, lang)
     if wrong_lang_in_notes:
-        print(f"  ⚠ Discarding custom notes for '{lang}' — detected as {wrong_lang_in_notes}, "
-              f"not {lang}'s own custom notes.")
+        print(f"  ⚠ Discarding remaining custom notes for '{lang}' — aggregate still detected as "
+              f"{wrong_lang_in_notes}, not {lang}'s own custom notes.")
         custom_notes = ""
 
     output_text = None
@@ -706,14 +774,65 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         if attempt < max_retries and not wrong_script_lang:
             print(f"  ⟳ {lang} attempt {attempt + 1} had {len(lang_warnings)} warning(s), retrying...")
 
-    # If a wrong-language mismatch survived every retry, this is severe enough that it
-    # must not ship silently — surface it as an unmissable warning rather than letting
-    # a wrong-language document pass through every other guarantee layer unflagged.
+    # If a wrong-language mismatch survived every normal retry, a warning banner sitting
+    # on top of an otherwise-unusable, wrong-language document is not an acceptable
+    # shipped result — someone can miss or ignore the banner and use the content as-is.
+    # One last, DISTINCTLY different corrective attempt is made before giving up: a
+    # fresh from-scratch synthesis call (not a continuation of the failing attempts),
+    # on the stronger review model rather than whichever model has already failed
+    # max_retries+1 times in a row, since repeating the same model/prompt combination
+    # that just failed repeatedly is unlikely to succeed a further identical way.
     final_wrong_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
+    generation_failed = False
     if final_wrong_lang:
-        lang_warnings = [f"CRITICAL: output for '{lang}' is predominantly in {final_wrong_lang} after "
-                          f"all retries — this document is very likely the wrong language and should not be used "
-                          f"as-is."] + lang_warnings
+        print(f"  ⚠ {lang}: all {max_retries + 1} attempt(s) still mismatched ({final_wrong_lang}) — "
+              f"making one final corrective attempt on the stronger review model.")
+        last_resort_notes = custom_notes.strip() + "\n\n" if custom_notes.strip() else ""
+        last_resort_notes += (
+            f"LAST-RESORT CORRECTION — every previous attempt at this exact request came back "
+            f"written mostly in {final_wrong_lang} instead of {lang}. Do not reuse, continue, or "
+            f"lightly edit any previous attempt. Write this document completely from scratch, in "
+            f"{lang} only, from the first word to the last. If you notice yourself about to write "
+            f"a sentence in any language other than {lang}, stop and rewrite that sentence in "
+            f"{lang} instead."
+        )
+        last_resort_text = synthesize_language_prompt(
+            clean_business_logic, synthesis_chunks, lang,
+            model=DEFAULT_REVIEW_MODEL, custom_notes=last_resort_notes.strip()
+        )
+        last_resort_wrong_lang = (_detect_script_mismatch(last_resort_text, lang)
+                                   or _detect_hindi_marathi_confusion(last_resort_text, lang))
+        if not last_resort_wrong_lang:
+            print(f"  ✓ {lang}: last-resort corrective attempt succeeded.")
+            output_text = last_resort_text
+            lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
+            final_wrong_lang = None
+        else:
+            print(f"  ✗ {lang}: last-resort corrective attempt STILL mismatched "
+                  f"({last_resort_wrong_lang}) — returning an error state instead of shipping "
+                  f"wrong-language content.")
+            generation_failed = True
+            final_wrong_lang = last_resort_wrong_lang
+
+    if generation_failed:
+        # Never ship wrong-language content as if it were a normal, usable result — not
+        # even with a warning attached. The rest of the guarantee pipeline (custom-notes
+        # append, safety-critical force-append, vocabulary completion, review) all
+        # assume they're refining a usable draft, which this isn't, so skip them and
+        # return a clear, unambiguous error state instead.
+        error_text = (
+            f"⚠ GENERATION FAILED FOR {lang}.\n\n"
+            f"Every generation attempt — including a dedicated final corrective attempt on a "
+            f"different model — produced output predominantly in {final_wrong_lang} instead of "
+            f"{lang}. Rather than return unusable wrong-language content, this generation was "
+            f"blocked.\n\n"
+            f"Please retry generation for {lang}, or review the business logic and custom notes "
+            f"supplied for this language before trying again."
+        )
+        return lang, error_text, [
+            f"Generation failed for '{lang}': output remained in {final_wrong_lang} after every "
+            f"retry and a final corrective attempt. No usable prompt was produced."
+        ]
 
     # GUARANTEE 5: never ship a language-switching instruction. Placed here — after
     # the synthesized body is final but before Guarantee 1 can inject a legitimate
@@ -763,12 +882,22 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
             relevant_warned_tag = next((t for t in warned_tags if t.split("_")[0] in
                                          {"pincode", "phone", "currency", "gold"} and
                                          any(t.startswith(ct) or ct in t for ct in chunk_tags)), None)
-            if relevant_warned_tag and chunk["content"][:60] not in output_text:
-                output_text = output_text.rstrip() + (
-                    f"\n\n### {chunk['category'].replace('_', ' ').title()} (safety-critical — verified present)\n"
-                    + chunk["content"]
-                )
-        lang_warnings = []  # resolved via forced inclusion, not left as an unresolved warning
+            if not relevant_warned_tag or chunk["content"][:60] in output_text:
+                continue
+            # This check assumes in-language numbers/currency are always correct — but a
+            # user's custom instruction for this exact generation (e.g. "keep currency in
+            # English") can deliberately make that assumption false. Without this guard,
+            # force-appending the original in-language chunk here would silently override
+            # the user's explicit customization with the generic default it was meant to
+            # replace. If the customization for this generation covers the domain this
+            # warning is about, stand down instead of fighting it.
+            if customization_guarantee_domain and relevant_warned_tag.startswith(customization_guarantee_domain):
+                continue
+            output_text = output_text.rstrip() + (
+                f"\n\n### {chunk['category'].replace('_', ' ').title()} (safety-critical — verified present)\n"
+                + chunk["content"]
+            )
+        lang_warnings = []  # resolved via forced inclusion (or deliberately stood down), not left as an unresolved warning
 
     # GUARANTEE 4: precise vocabulary-list completion. Unlike prose categories, a
     # vocabulary-list chunk (preserved terms, identity documents, lending/insurance
@@ -807,6 +936,14 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     source_rules = "\n\n".join(f"[{c['category']}]\n{c['content']}" for c in synthesis_chunks)
     if custom_notes.strip():
         source_rules += "\n\n[Business-specific language requirements]\n" + custom_notes
+
+    # Snapshot of the body BEFORE the review/fix pass — it's already been verified
+    # language-correct (either it passed the retry loop cleanly, or the last-resort
+    # corrective attempt above fixed it). If the review/fix pass regresses it back into
+    # the wrong language, this is what gets restored, rather than shipping the regressed
+    # version with just a warning attached.
+    pre_review_text = output_text
+
     review_text = "" if skip_review else review_language_prompt(
         clean_business_logic, output_text, lang, model=DEFAULT_REVIEW_MODEL, source_rules=source_rules
     )
@@ -825,17 +962,33 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     lang_warnings.extend(check_text_against_invariants(output_text, triggered_tags, _INVARIANTS))
     final_wrong_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
     if final_wrong_lang:
-        lang_warnings.append(f"Final output for '{lang}' contains a language mismatch: {final_wrong_lang}.")
+        # The review/fix pass (which has no explicit awareness of script/language
+        # correctness — see REVIEWER_SYSTEM_PROMPT) introduced a language regression into
+        # an output that was already verified correct. Never ship that regression with
+        # just a warning on top — revert to the pre-review version, which is known-good,
+        # and say so, rather than presenting wrong-language content as a normal result.
+        print(f"  ⚠ {lang}: the review/fix pass introduced a language regression "
+              f"({final_wrong_lang}) — reverting to the pre-review version.")
+        output_text = pre_review_text
+        lang_warnings.append(
+            f"The AI review/fix pass introduced a language regression for '{lang}' and was "
+            f"discarded; the pre-review version was kept instead."
+        )
     if skip_review:
         lang_warnings.append("Semantic review was skipped for this large input; manually review business alignment before use.")
     lang_warnings = list(dict.fromkeys(lang_warnings))
 
-    # Deterministic positioning guarantee (see note above commitment_chunk): this
-    # runs last, after every other step including the review/fix pass, so the
-    # language-commitment rule is guaranteed to be the literal first thing in the
-    # document, verbatim, no matter what the model produced.
+    # Deterministic positioning guarantee (see note above commitment_chunk and
+    # gender_neutral_chunk): this runs last, after every other step including the
+    # review/fix pass, so both rules are guaranteed to be the literal first thing in
+    # the document, verbatim, no matter what the model produced.
+    guaranteed_header = []
     if commitment_chunk:
-        output_text = commitment_chunk["content"].strip() + "\n\n" + output_text.lstrip()
+        guaranteed_header.append(commitment_chunk["content"].strip())
+    if gender_neutral_chunk:
+        guaranteed_header.append(gender_neutral_chunk["content"].strip())
+    if guaranteed_header:
+        output_text = "\n\n".join(guaranteed_header) + "\n\n" + output_text.lstrip()
 
     return lang, output_text, lang_warnings
 
@@ -872,9 +1025,86 @@ def _review_found_issues(review_text: str) -> bool:
     return not (is_short and has_clean_signal)
 
 
+# ---------- CUSTOMISE PROMPT: per-generation instruction category matching ----------
+# Lets someone add a one-off instruction the standard chunk library doesn't cover
+# (e.g. "Price or currency should always be spoken in English throughout, in every
+# language") without it either silently duplicating an existing rule category, or
+# fighting it as a separate, potentially conflicting section.
+
+# Maps a TAG_TRIGGERS domain to the chunk category that owns it, for reinforcing an
+# existing category rather than creating a redundant new section for it.
+_CUSTOMIZATION_TAG_TO_CATEGORY = {
+    "pincode": "pincode_phone", "phone_number": "pincode_phone",
+    "currency": "currency", "gold_weight": "gold_weight",
+    "dates": "dates", "time_pronunciation": "time_pronunciation",
+    "branch_names": "branch_names", "identity_documents": "identity_documents",
+    "lending_insurance_terms": "lending_insurance_terms",
+}
+
+# The specific domains the deterministic safety-critical guarantee (Guarantee 2 in
+# _generate_one_language) force-enforces — this is the subset of the mapping above
+# whose enforcement can conflict with a user customization, since Guarantee 2 assumes
+# in-language numbers/currency/identifiers are always correct.
+_CUSTOMIZATION_GUARANTEE_DOMAINS = {
+    "pincode": TAG_TRIGGERS["pincode"],
+    "phone": TAG_TRIGGERS["phone_number"],
+    "currency": TAG_TRIGGERS["currency"],
+    "gold": TAG_TRIGGERS["gold_weight"],
+}
+
+_ENGLISH_PRESERVATION_CUES = [
+    r"\bin english\b", r"\bstay(?:s|ing)? in english\b", r"\bkeep\b.{0,25}\bin english\b",
+    r"\bnever translate\b", r"\balways\b.{0,25}\bin english\b", r"\bremains? in english\b",
+    r"\bspoken\b.{0,15}\bin english\b", r"\bsay\b.{0,25}\bin english\b",
+]
+
+_HONORIFIC_CUES = ["honorific", " sir ", " madam ", "respectful address", "gender-neutral",
+                   "gender neutral", "pronoun", "address the customer", "gender agnostic",
+                   "gender-agnostic"]
+_TONE_CUES = ["tone", "colloquial", "register", "casual", "formal style", "pacing"]
+
+
+def _classify_customization(instruction: str) -> tuple:
+    """Best-effort match of a free-text custom instruction to an existing chunk
+    category, so it reinforces that category for this generation instead of creating a
+    separate, potentially conflicting section. Falls back to no match (caller should
+    let it stand on its own as a new section) when nothing fits.
+
+    Returns (category_or_None, guarantee_domain_or_None). guarantee_domain is one of
+    the deterministic safety-critical domains (pincode/phone/currency/gold) this
+    instruction affects, if any — separate from category because a customization can
+    be classified as 'preserve_english' (the category label) while still needing to
+    stand down the 'currency' safety guarantee specifically (see
+    _CUSTOMIZATION_GUARANTEE_DOMAINS' usage in _generate_one_language)."""
+    if not instruction or not instruction.strip():
+        return None, None
+    text = f" {instruction.lower()} "
+
+    guarantee_domain = None
+    for domain, keywords in _CUSTOMIZATION_GUARANTEE_DOMAINS.items():
+        if any(_keyword_present(text, kw) for kw in keywords):
+            guarantee_domain = domain
+            break
+
+    if any(re.search(p, text) for p in _ENGLISH_PRESERVATION_CUES):
+        return "preserve_english", guarantee_domain
+
+    for tag, category in _CUSTOMIZATION_TAG_TO_CATEGORY.items():
+        if any(_keyword_present(text, kw) for kw in TAG_TRIGGERS[tag]):
+            return category, guarantee_domain
+
+    if any(cue in text for cue in _HONORIFIC_CUES):
+        return "honorifics", guarantee_domain
+    if any(cue in text for cue in _TONE_CUES):
+        return "colloquial_speech", guarantee_domain
+
+    return None, guarantee_domain
+
+
 def generate_language_prompts_multi(clean_business_logic: str, languages: list, chunks_file="chunks.json",
                                      model: str = DEFAULT_MODEL, max_retries: int = 3,
-                                     max_workers: int = 4, custom_notes_by_language: dict = None) -> dict:
+                                     max_workers: int = 4, custom_notes_by_language: dict = None,
+                                     custom_instruction: str = "") -> dict:
     """Business logic is already clean — skip extraction, generate scoped language prompts for multiple languages.
 
     Languages are generated CONCURRENTLY (up to max_workers at once) since each language is an
@@ -889,14 +1119,44 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     rules (extracted separately, see Stage 2) that must be included for that specific language,
     on top of whatever chunks.json's generic library provides.
 
+    custom_instruction: optional free-text "Customise Prompt" instruction for this one generation
+    (e.g. "Price or currency should always be spoken in English"), applied identically to every
+    requested language. Matched against the existing chunk categories (see _classify_customization)
+    so it reinforces a matching category instead of creating a redundant or conflicting section,
+    and fed through the same per-request custom-notes channel that already gives custom notes real
+    authority over generic chunk defaults — never persisted to chunks.json.
+
     Returns {"prompts": {lang: text}, "warnings": {lang: [violation strings]}}.
     """
     with open(chunks_file, "r", encoding="utf-8") as f:
         all_chunks = json.load(f)
 
-    custom_notes_by_language = custom_notes_by_language or {}
+    custom_notes_by_language = dict(custom_notes_by_language or {})
     prompts = {}
     warnings = {}
+
+    custom_instruction = (custom_instruction or "").strip()
+    matched_category, customization_guarantee_domain = _classify_customization(custom_instruction)
+    if custom_instruction:
+        if matched_category:
+            category_label = matched_category.replace("_", " ")
+            injected_note = (
+                f"CUSTOM OVERRIDE FOR THIS GENERATION — '{category_label.upper()}': {custom_instruction}\n"
+                f"This strengthens/extends the existing {category_label} rules for this generation; "
+                f"apply it as an amendment to that category's guidance rather than as a separate "
+                f"section, and do not let a generic {category_label} default contradict it."
+            )
+        else:
+            injected_note = (
+                f"NEW CUSTOM INSTRUCTION FOR THIS GENERATION (does not match an existing rule "
+                f"category): {custom_instruction}\n"
+                f"Include this as its own clearly labeled new section in the output (e.g. "
+                f"'### Custom Instruction'), since it does not belong under any of the standard "
+                f"categories above."
+            )
+        for lang in languages:
+            existing = custom_notes_by_language.get(lang, "")
+            custom_notes_by_language[lang] = (existing + "\n\n" + injected_note).strip() if existing else injected_note
 
     effective_max_retries, skip_review = _adaptive_limits(len(clean_business_logic), max_retries)
     if skip_review:
@@ -906,7 +1166,7 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_generate_one_language, clean_business_logic, lang, all_chunks, model, effective_max_retries,
-                             custom_notes_by_language.get(lang, ""), skip_review): lang
+                             custom_notes_by_language.get(lang, ""), skip_review, customization_guarantee_domain): lang
             for lang in languages
         }
         for future in as_completed(futures):

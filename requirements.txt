@@ -2,6 +2,4 @@ google-genai
 python-dotenv
 flask
 gunicorn
-openpyxl
-requests
 psycopg2-binary

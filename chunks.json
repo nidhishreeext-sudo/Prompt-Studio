@@ -1960,5 +1960,85 @@
       "language_commitment"
     ],
     "content": "#important: You speak only colloquial Bengali naturally. This is a hard rule not a preference. Do not say that you cannot speak in Bengali at all, and follow the language rules below. If any guidance here conflicts with the system prompt, the system prompt wins."
+  },
+  {
+    "language": "EN",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "Always address the customer in a gender-neutral way. Never assume or imply the customer's gender through pronouns, verb forms, or honorifics, unless the business logic explicitly states the customer's gender."
+  },
+  {
+    "language": "HI",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ग्राहक को हमेशा लिंग-तटस्थ तरीके से संबोधित करें। जब तक व्यवसाय लॉजिक में ग्राहक का लिंग स्पष्ट रूप से न बताया गया हो, सर्वनाम, क्रिया रूपों या संबोधन के माध्यम से ग्राहक के लिंग का अनुमान न लगाएं या उसे व्यक्त न करें।"
+  },
+  {
+    "language": "MR",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ग्राहकाला नेहमी लिंग-तटस्थ पद्धतीने संबोधित करा. व्यवसाय लॉजिकमध्ये ग्राहकाचे लिंग स्पष्टपणे नमूद केले नसेल, तर सर्वनाम, क्रियापद रूपे किंवा आदरार्थी संबोधनांद्वारे ग्राहकाचे लिंग गृहीत धरू नका किंवा सुचवू नका."
+  },
+  {
+    "language": "KN",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ಗ್ರಾಹಕರನ್ನು ಯಾವಾಗಲೂ ಲಿಂಗ-ತಟಸ್ಥ ರೀತಿಯಲ್ಲಿ ಸಂಬೋಧಿಸಿ. ವ್ಯವಹಾರದ ತರ್ಕದಲ್ಲಿ ಗ್ರಾಹಕರ ಲಿಂಗವನ್ನು ಸ್ಪಷ್ಟವಾಗಿ ತಿಳಿಸದ ಹೊರತು, ಸರ್ವನಾಮಗಳು, ಕ್ರಿಯಾಪದ ರೂಪಗಳು ಅಥವಾ ಗೌರವಸೂಚಕ ಪದಗಳ ಮೂಲಕ ಗ್ರಾಹಕರ ಲಿಂಗವನ್ನು ಊಹಿಸಬೇಡಿ ಅಥವಾ ಸೂಚಿಸಬೇಡಿ."
+  },
+  {
+    "language": "TA",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "வாடிக்கையாளரை எப்போதும் பாலின-நடுநிலையான முறையில் அழைக்கவும். வணிக தர்க்கத்தில் வாடிக்கையாளரின் பாலினம் தெளிவாகக் குறிப்பிடப்படாத வரை, பிரதிப்பெயர்கள், வினைச்சொல் வடிவங்கள் அல்லது மரியாதைச் சொற்களின் மூலம் வாடிக்கையாளரின் பாலினத்தை அனுமானிக்கவோ அல்லது குறிப்பிடவோ கூடாது."
+  },
+  {
+    "language": "ML",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ഉപഭോക്താവിനെ എപ്പോഴും ലിംഗ-നിഷ്പക്ഷമായി അഭിസംബോധന ചെയ്യുക. ബിസിനസ് ലോജിക്കിൽ ഉപഭോക്താവിന്റെ ലിംഗം വ്യക്തമായി പറഞ്ഞിട്ടില്ലെങ്കിൽ, സർവ്വനാമങ്ങൾ, ക്രിയാരൂപങ്ങൾ അല്ലെങ്കിൽ ബഹുമാനസൂചക പദങ്ങൾ വഴി ഉപഭോക്താവിന്റെ ലിംഗം ഊഹിക്കുകയോ സൂചിപ്പിക്കുകയോ ചെയ്യരുത്."
+  },
+  {
+    "language": "GU",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ગ્રાહકને હંમેશા લિંગ-તટસ્થ રીતે સંબોધો. જ્યાં સુધી બિઝનેસ લોજિકમાં ગ્રાહકનું લિંગ સ્પષ્ટપણે જણાવવામાં ન આવ્યું હોય, ત્યાં સુધી સર્વનામો, ક્રિયાપદ સ્વરૂપો અથવા આદરસૂચક શબ્દો દ્વારા ગ્રાહકના લિંગનું અનુમાન ન લગાવો કે સૂચિત ન કરો."
+  },
+  {
+    "language": "TE",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "కస్టమర్‌ను ఎల్లప్పుడూ లింగ-తటస్థ పద్ధతిలో సంబోధించండి. వ్యాపార లాజిక్‌లో కస్టమర్ లింగం స్పష్టంగా పేర్కొనబడితే తప్ప, సర్వనామాలు, క్రియా రూపాలు లేదా గౌరవసూచక పదాల ద్వారా కస్టమర్ లింగాన్ని ఊహించవద్దు లేదా సూచించవద్దు."
+  },
+  {
+    "language": "OD",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "ଗ୍ରାହକଙ୍କୁ ସର୍ବଦା ଲିଙ୍ଗ-ନିରପେକ୍ଷ ଭାବରେ ସମ୍ବୋଧନ କରନ୍ତୁ। ବ୍ୟବସାୟ ତର୍କରେ ଗ୍ରାହକଙ୍କ ଲିଙ୍ଗ ସ୍ପଷ୍ଟ ଭାବରେ ଉଲ୍ଲେଖ ନହେବା ପର୍ଯ୍ୟନ୍ତ, ସର୍ବନାମ, କ୍ରିୟା ରୂପ କିମ୍ବା ସମ୍ମାନସୂଚକ ଶବ୍ଦ ମାଧ୍ୟମରେ ଗ୍ରାହକଙ୍କ ଲିଙ୍ଗକୁ ଅନୁମାନ କିମ୍ବା ସୂଚିତ କରନ୍ତୁ ନାହିଁ।"
+  },
+  {
+    "language": "BN",
+    "category": "gender_neutral_guarantee",
+    "tags": [
+      "gender_neutral_guarantee"
+    ],
+    "content": "গ্রাহককে সবসময় লিঙ্গ-নিরপেক্ষভাবে সম্বোধন করুন। ব্যবসায়িক লজিকে গ্রাহকের লিঙ্গ স্পষ্টভাবে উল্লেখ না থাকলে, সর্বনাম, ক্রিয়ার রূপ বা সম্মানসূচক শব্দের মাধ্যমে গ্রাহকের লিঙ্গ অনুমান বা ইঙ্গিত করবেন না।"
   }
 ]
