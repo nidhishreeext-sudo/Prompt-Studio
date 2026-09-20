@@ -272,9 +272,33 @@ LENGTH BUDGET — HARD, NOT A SUGGESTION: the finished document must land at rou
 Output the final language prompt only, no commentary.""" + "\n\n" + LANGUAGE_OUTPUT_GUIDANCE
 
 
-def synthesize_language_prompt(business_logic: str, relevant_chunks: list, language: str, model: str = DEFAULT_MODEL, custom_notes: str = "") -> str:
+def synthesize_language_prompt(business_logic: str, relevant_chunks: list, language: str, model: str = DEFAULT_MODEL,
+                               custom_notes: str = "", customization_category: str = None,
+                               customization_is_new_section: bool = False) -> str:
     model = _resolve_model(model)
     chunks_text = "\n\n".join([f"[{c['category']}]\n{c['content']}" for c in relevant_chunks])
+
+    # This is INSTRUCTION TO THE MODEL about how to place the custom rules below, kept
+    # in its own paragraph, explicitly and separately, and OUTSIDE the "include exactly
+    # as given, never omit" scope of custom_notes_block below. Putting integration
+    # guidance like this inside the same text as custom_notes was a real production
+    # leak: custom_notes_block's own wording ("include every one of them in the output,
+    # exactly as given") applied to the guidance sentence too when it was appended
+    # directly onto the custom-notes content, so a compliant model reproduced the
+    # guidance itself verbatim into the customer-facing document, alongside the actual
+    # rule. Keeping this paragraph separate — and telling the model explicitly never to
+    # reproduce it — means only the actual content in custom_notes_block is ever subject
+    # to the "include exactly as given" instruction.
+    customization_guidance_block = ""
+    if customization_category:
+        category_label = customization_category.replace("_", " ")
+        customization_guidance_block = f"""
+
+INTERNAL WRITING GUIDANCE — for you only, never quote, paraphrase, or otherwise output any part of this paragraph, it is not document content: one of the custom rules below is a one-off customization for this specific generation that belongs under your existing '{category_label}' guidance. Merge or reinforce it into that section instead of creating a separate one for it. Do not explain this categorization or mention that anything was merged — only the rule's own content may appear in your output."""
+    elif customization_is_new_section:
+        customization_guidance_block = """
+
+INTERNAL WRITING GUIDANCE — for you only, never quote, paraphrase, or otherwise output any part of this paragraph, it is not document content: one of the custom rules below is a one-off customization for this specific generation that does not fit any of your existing rule categories. Give it its own clearly labeled new section (e.g. "### Custom Instruction"). Do not explain this categorization — only the rule's own content may appear in your output."""
 
     custom_notes_block = ""
     if custom_notes.strip():
@@ -290,7 +314,7 @@ BUSINESS LOGIC CONTEXT (for relevance only, do not include in output):
 {business_logic}
 
 RELEVANT LANGUAGE CHUNKS FOR {language}:
-{chunks_text}{custom_notes_block}"""
+{chunks_text}{customization_guidance_block}{custom_notes_block}"""
 
     # Every downstream guarantee layer (custom notes, invariants, script check, review)
     # operates on whatever text this function returns — none of them ever checked
@@ -661,9 +685,50 @@ def _strip_language_switching_instructions(output_text: str) -> tuple:
     return cleaned.strip(), len(matches)
 
 
+# Fixed, literal phrases that only ever appear in this codebase's OWN internal
+# customization-integration guidance (see synthesize_language_prompt's
+# customization_guidance_block) — never legitimate customer-facing content. A
+# production Kannada document once shipped with this kind of sentence verbatim
+# because the guidance text was appended directly onto the customization content
+# instead of being kept in its own never-reproduce-this paragraph (now fixed at the
+# source). This is a deterministic safety net on top of that fix, not a replacement
+# for it — the same "don't just ask nicely" principle already applied to every other
+# guarantee in this file.
+_CUSTOMIZATION_META_LEAK_PHRASES = [
+    "strengthens/extends the existing",
+    "apply it as an amendment to that category",
+    "does not belong under any of the standard categories",
+    "internal writing guidance",
+    "do not explain this categorization",
+]
+
+
+def _strip_customization_meta_leak(output_text: str) -> tuple:
+    """Deterministically removes any sentence containing one of this codebase's own
+    internal customization-integration phrases, in case it leaked into the output
+    despite being kept out of the 'include exactly as given' custom-notes channel.
+    Returns (cleaned_text, count_removed)."""
+    sentences = re.split(r'(?<=[.!?])\s+', output_text)
+    lowered_phrases = _CUSTOMIZATION_META_LEAK_PHRASES
+    kept, removed = [], 0
+    for sentence in sentences:
+        sentence_lower = sentence.lower()
+        if any(phrase in sentence_lower for phrase in lowered_phrases):
+            removed += 1
+        else:
+            kept.append(sentence)
+    if not removed:
+        return output_text, 0
+    cleaned = " ".join(kept)
+    cleaned = re.sub(r'\n[ \t]+', '\n', cleaned)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    return cleaned.strip(), removed
+
+
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "",
-                            skip_review: bool = False, customization_guarantee_domain: str = None) -> tuple:
+                            skip_review: bool = False, customization_guarantee_domain: str = None,
+                            customization_category: str = None, customization_is_new_section: bool = False) -> tuple:
     """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread.
 
     GUARANTEE LAYER — this is the part that makes silent content loss structurally
@@ -751,7 +816,9 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         # this is not a minor style fix, it's telling the model the whole document was
         # in the wrong language and must not be again.
         retry_notes = (script_correction_note + "\n\n" + custom_notes).strip() if script_correction_note else custom_notes
-        output_text = synthesize_language_prompt(clean_business_logic, synthesis_chunks, lang, model=model, custom_notes=retry_notes)
+        output_text = synthesize_language_prompt(clean_business_logic, synthesis_chunks, lang, model=model, custom_notes=retry_notes,
+                                                  customization_category=customization_category,
+                                                  customization_is_new_section=customization_is_new_section)
 
         wrong_script_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
         lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
@@ -798,7 +865,9 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         )
         last_resort_text = synthesize_language_prompt(
             clean_business_logic, synthesis_chunks, lang,
-            model=DEFAULT_REVIEW_MODEL, custom_notes=last_resort_notes.strip()
+            model=DEFAULT_REVIEW_MODEL, custom_notes=last_resort_notes.strip(),
+            customization_category=customization_category,
+            customization_is_new_section=customization_is_new_section
         )
         last_resort_wrong_lang = (_detect_script_mismatch(last_resort_text, lang)
                                    or _detect_hindi_marathi_confusion(last_resort_text, lang))
@@ -844,6 +913,15 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     if switch_removed:
         print(f"  ⚠ {lang}: removed {switch_removed} language-switching instruction(s) "
               f"that contradicted the language_commitment guarantee.")
+
+    # Defense-in-depth net for the customization-integration-guidance leak (see
+    # _strip_customization_meta_leak) — the root fix keeps this text out of the
+    # synthesizer's "include exactly as given" channel entirely, but this catches it
+    # deterministically in case it slips through anyway.
+    output_text, meta_leak_removed = _strip_customization_meta_leak(output_text)
+    if meta_leak_removed:
+        print(f"  ⚠ {lang}: removed {meta_leak_removed} leaked internal customization-guidance "
+              f"sentence(s) from the output.")
 
     # GUARANTEE 1: business-specific custom notes. No automated invariant exists for
     # arbitrary free-text custom rules (they're different for every business), so this
@@ -959,6 +1037,7 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
 
     # Corrections can introduce new regressions; check the final body, not just the draft.
     output_text, _ = _strip_language_switching_instructions(output_text)
+    output_text, _ = _strip_customization_meta_leak(output_text)
     lang_warnings.extend(check_text_against_invariants(output_text, triggered_tags, _INVARIANTS))
     final_wrong_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
     if final_wrong_lang:
@@ -1063,6 +1142,41 @@ _HONORIFIC_CUES = ["honorific", " sir ", " madam ", "respectful address", "gende
                    "gender-agnostic"]
 _TONE_CUES = ["tone", "colloquial", "register", "casual", "formal style", "pacing"]
 
+# A per-request "Customise Prompt" text box must never be able to override WHICH
+# language is fundamentally being spoken — that's exactly what the always-on
+# language_commitment guarantee exists to make un-overridable except by the
+# business's own actual logic (see _strip_language_switching_instructions above,
+# which strips the same class of thing when it leaks in from business logic). A
+# real production customization ("Speak only in Hindi, maintaining Hindi grammar and
+# sentence structure") reached this far and got misclassified as an unrelated
+# category ('preserve_english', because a companion clause about English happened to
+# be in the same free-text box) instead of being rejected outright. This pattern is
+# checked FIRST, before any category classification runs, and independently of
+# whichever language is currently being generated — a customization that names a
+# spoken language and asserts it as the one to use is rejected for every requested
+# language, not just the one it happens to name, since a text box like this should
+# never be able to touch language identity at all, matched or not.
+_LANGUAGE_IDENTITY_OVERRIDE_PATTERN = re.compile(
+    r'\b(?:speak|talk|converse|communicate|respond|reply)\w*\s+(?:only\s+|solely\s+|purely\s+)?(?:in|using)\s+'
+    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
+    r'|\bswitch(?:es|ing|ed)?\s+(?:back\s+)?(?:to|into)\s+(?:speaking\s+)?'
+    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
+    r'|\buse\s+(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\s+'
+    r'(?:language\s+)?throughout\b',
+    re.IGNORECASE,
+)
+
+
+def _customization_overrides_language_identity(instruction: str) -> bool:
+    """True if the customization's own text amounts to asserting which spoken
+    language the agent uses at all (e.g. "speak only in Hindi", "switch to English",
+    "use Kannada throughout") — as opposed to a rule about how to say something
+    WITHIN whichever language is already being generated. This must be rejected
+    outright rather than classified into any category, matched or not."""
+    if not instruction or not instruction.strip():
+        return False
+    return bool(_LANGUAGE_IDENTITY_OVERRIDE_PATTERN.search(instruction))
+
 
 def _classify_customization(instruction: str) -> tuple:
     """Best-effort match of a free-text custom instruction to an existing chunk
@@ -1122,9 +1236,13 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     custom_instruction: optional free-text "Customise Prompt" instruction for this one generation
     (e.g. "Price or currency should always be spoken in English"), applied identically to every
     requested language. Matched against the existing chunk categories (see _classify_customization)
-    so it reinforces a matching category instead of creating a redundant or conflicting section,
-    and fed through the same per-request custom-notes channel that already gives custom notes real
-    authority over generic chunk defaults — never persisted to chunks.json.
+    so it reinforces a matching category instead of creating a redundant or conflicting section.
+    Only the instruction's own raw text is ever fed into the per-request custom-notes channel that
+    gives custom notes real authority over generic chunk defaults — the categorization/integration
+    guidance is kept entirely separate (see synthesize_language_prompt's customization_guidance_block)
+    so it can never itself leak into customer-facing output. Never persisted to chunks.json. A
+    customization that amounts to overriding which language is spoken at all (e.g. "speak only in
+    Hindi") is rejected outright rather than classified — see _customization_overrides_language_identity.
 
     Returns {"prompts": {lang: text}, "warnings": {lang: [violation strings]}}.
     """
@@ -1136,27 +1254,38 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     warnings = {}
 
     custom_instruction = (custom_instruction or "").strip()
-    matched_category, customization_guarantee_domain = _classify_customization(custom_instruction)
-    if custom_instruction:
-        if matched_category:
-            category_label = matched_category.replace("_", " ")
-            injected_note = (
-                f"CUSTOM OVERRIDE FOR THIS GENERATION — '{category_label.upper()}': {custom_instruction}\n"
-                f"This strengthens/extends the existing {category_label} rules for this generation; "
-                f"apply it as an amendment to that category's guidance rather than as a separate "
-                f"section, and do not let a generic {category_label} default contradict it."
-            )
-        else:
-            injected_note = (
-                f"NEW CUSTOM INSTRUCTION FOR THIS GENERATION (does not match an existing rule "
-                f"category): {custom_instruction}\n"
-                f"Include this as its own clearly labeled new section in the output (e.g. "
-                f"'### Custom Instruction'), since it does not belong under any of the standard "
-                f"categories above."
-            )
+    matched_category = None
+    customization_guarantee_domain = None
+    customization_is_new_section = False
+    customization_rejected_warning = None
+
+    if custom_instruction and _customization_overrides_language_identity(custom_instruction):
+        # A per-request text box must never be able to touch WHICH language is spoken —
+        # that's exactly what the always-on language_commitment guarantee exists to make
+        # un-overridable except by the business's own actual logic. Reject the
+        # customization outright, for every requested language, rather than attempting
+        # to classify or apply any part of it.
+        customization_rejected_warning = (
+            f"Custom instruction ignored: \"{custom_instruction}\" attempts to override which "
+            f"language is spoken. Customizations cannot override the language-commitment "
+            f"guarantee — that is controlled only by the business's own logic and the language "
+            f"you requested."
+        )
+        print(f"  ⚠ Rejected custom instruction — it attempts to override the spoken language "
+              f"itself, which is not supported: {custom_instruction!r}")
+        custom_instruction = ""
+    elif custom_instruction:
+        matched_category, customization_guarantee_domain = _classify_customization(custom_instruction)
+        customization_is_new_section = matched_category is None
+        # Only the user's own words go into the custom-notes channel — the "which category
+        # does this belong to" guidance is passed separately (customization_category /
+        # customization_is_new_section below) and kept out of the "include exactly as
+        # given" custom-notes instruction entirely, since mixing the two was the actual
+        # cause of a production leak (internal integration guidance shipped verbatim in a
+        # customer-facing document — see synthesize_language_prompt).
         for lang in languages:
             existing = custom_notes_by_language.get(lang, "")
-            custom_notes_by_language[lang] = (existing + "\n\n" + injected_note).strip() if existing else injected_note
+            custom_notes_by_language[lang] = (existing + "\n\n" + custom_instruction).strip() if existing else custom_instruction
 
     effective_max_retries, skip_review = _adaptive_limits(len(clean_business_logic), max_retries)
     if skip_review:
@@ -1166,12 +1295,15 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(_generate_one_language, clean_business_logic, lang, all_chunks, model, effective_max_retries,
-                             custom_notes_by_language.get(lang, ""), skip_review, customization_guarantee_domain): lang
+                             custom_notes_by_language.get(lang, ""), skip_review, customization_guarantee_domain,
+                             matched_category, customization_is_new_section): lang
             for lang in languages
         }
         for future in as_completed(futures):
             lang, output_text, lang_warnings = future.result()
             prompts[lang] = output_text
+            if customization_rejected_warning:
+                lang_warnings = [customization_rejected_warning] + lang_warnings
             if lang_warnings:
                 warnings[lang] = lang_warnings
 
