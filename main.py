@@ -79,6 +79,8 @@ EXTRACTOR_SYSTEM_PROMPT = """You are a prompt-cleaning tool. You will be given a
 
 Your job: output ONLY the business logic. Remove every language-specific rule, grammar rule, gender-form rule, colloquial-speech instruction, honorific rule, pronunciation rule, formatting-of-numbers/dates/currency-in-speech rule, AND any rule about which spoken language to default to or switch to (e.g. "primary language is Kannada, switch to English if the customer speaks English," "default to Hindi unless the customer requests otherwise"). This last category is easy to miss because it can read like a persona trait rather than an obvious grammar/pronunciation rule — treat any instruction naming a spoken language and describing when to use or change it as a language-specific rule to remove, every time, regardless of how it's phrased or where in the document it appears. This system always generates single-language, non-switching output for whichever language was requested — a leftover "switch to X" instruction from the raw prompt would directly contradict that and must never survive extraction.
 
+This includes a specific pattern that's easy to miss because it looks like ordinary tool/integration plumbing rather than a language rule: logic naming which PRE-LOCALIZED TOOL-RESPONSE FIELD to speak from, where the field name itself encodes a spoken language (e.g. "use the speak_hi field by default; use speak_en if the customer speaks English," "respond from the hi_response field unless the en_response field applies"). This is language-selection/routing logic wearing a technical disguise — remove it completely, exactly like an explicit "switch to X" instruction, regardless of how it's named or phrased.
+
 Keep everything else, including:
 - Conversation flow, nodes, stages, and turn sequencing (e.g. "ask name first, then mobile in a separate turn").
 - Tool invocation logic and disposition/routing logic.
@@ -113,7 +115,20 @@ def extract_business_logic(raw_prompt: str, model: str = DEFAULT_MODEL) -> str:
         # Business content must not inherit the language prompt's length budget.
         config=_build_config(model)
     )
-    return response.text or ""
+    business_logic = response.text or ""
+
+    # Guardrail A defense-in-depth: EXTRACTOR_SYSTEM_PROMPT asks the model not to
+    # let any language-switching/routing rule survive extraction (including the
+    # tool-field speak_hi/speak_en pattern), but asking nicely is never this
+    # codebase's only line of defense for a hard guardrail — the same deterministic
+    # detector used to filter every OTHER injection point (main body, custom notes,
+    # customizations) is applied here too, since a leftover routing rule in
+    # business logic would otherwise get re-matched as "relevant" content and
+    # risk resurfacing in custom-notes extraction downstream.
+    business_logic, removed = _strip_language_switching_instructions(business_logic)
+    if removed:
+        print(f"  ⚠ Removed {removed} language-switching/routing sentence(s) from extracted business logic.")
+    return business_logic
 
 
 # ---------- STAGE 3: Relevance Matcher ----------
@@ -644,45 +659,203 @@ def _filter_custom_notes_for_wrong_language(custom_notes: str, lang: str) -> tup
     return "\n".join(kept), discarded
 
 
-# Matches a full sentence instructing the model to switch to a different spoken
-# language (e.g. "switch to English", "switch back to Hindi", "switching into
-# Kannada"). Deliberately requires a language name from this system's own set —
-# not a bare "switch" — since "switch" alone shows up in unrelated contexts (call
-# transfer, gender consistency) that must not be touched.
-_LANGUAGE_SWITCH_PATTERN = re.compile(
-    r'[^.!?\n]*\bswitch(?:es|ing|ed)?\s+(?:back\s+)?(?:to|into)\s+(?:speaking\s+)?'
-    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
-    r'[^.!?\n]*[.!?]?',
-    re.IGNORECASE,
-)
+# ---------- GUARDRAIL B: language-switching/imposition detector ----------
+# One canonical detector, used at every point ANY text is about to be injected into
+# a generation — the main synthesized body, custom notes extracted from a raw
+# business prompt, and a user-typed customization. Cross-language contamination has
+# been found coming from all three sources; the earlier fix only ever ran on the
+# main body, once, at the end. This is deliberately broader than literal "switch to
+# X" phrasing: it also catches a default-language declaration with a conditional
+# fallback to another language, an exclusive-single-language assertion regardless of
+# which language it names, and this domain's tool-field routing convention
+# (speak_hi/speak_en and similar field-name patterns) — all of these are the same
+# underlying violation (asserting or routing spoken-language identity), just phrased
+# differently depending on which pipeline stage the text came from.
+_LANG_NAME_ALT = (r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)')
+_LANG_FIELD_CODE_ALT = r'(?:en|hi|kn|ta|ml|gu|mr|te|od|bn)'
+
+_LANGUAGE_IMPOSITION_PATTERNS = [
+    # "switch to English", "switching into Kannada", "switch back to Hindi"
+    re.compile(rf'\bswitch(?:es|ing|ed)?\s+(?:back\s+)?(?:to|into)\s+(?:speaking\s+)?{_LANG_NAME_ALT}\b', re.IGNORECASE),
+    # "speak/respond/converse (only) in X" — tight adjacency on purpose (see note
+    # below) so this doesn't fire on an unrelated sentence like "always speak the
+    # branch name in English", which has real words between the verb and "in X".
+    re.compile(rf'\b(?:speak|talk|converse|communicate|respond|reply)\w*\s+(?:only\s+|solely\s+|purely\s+|always\s+)?(?:in|using)\s+{_LANG_NAME_ALT}\b', re.IGNORECASE),
+    # "you (only) speak only X" / "speak only Hindi" (no "in") / "you only speak X"
+    # (only before the verb instead of after) — a business declaration of exclusive
+    # single-language use, banned regardless of phrasing or which language it names
+    # per Guardrail B, since this duplicates what the deterministic
+    # language_commitment guarantee already owns.
+    re.compile(rf'\b(?:you\s+)?(?:only\s+)?(?:speak|talk|converse|respond)\w*\s+only\s+(?:colloquial\s+)?{_LANG_NAME_ALT}\b', re.IGNORECASE),
+    re.compile(rf'\b(?:you\s+)?only\s+(?:speak|talk|converse|respond)\w*\s+(?:colloquial\s+)?(?:in\s+)?{_LANG_NAME_ALT}\b', re.IGNORECASE),
+    # "use Kannada language throughout"
+    re.compile(rf'\buse\s+{_LANG_NAME_ALT}\s+(?:language\s+)?throughout\b', re.IGNORECASE),
+    # "default/primary/preferred (spoken) language is Hindi"
+    re.compile(rf'\b(?:default|primary|preferred)\s+(?:spoken\s+)?language\s+(?:is|:)\s*{_LANG_NAME_ALT}\b', re.IGNORECASE),
+    # this domain's tool-field routing convention: speak_hi, speak_en, hi_response,
+    # response_en, en_field, etc. — these field names exist ONLY to route between
+    # spoken languages, so their mere presence in text destined for a language
+    # document is itself the violation, regardless of surrounding wording.
+    re.compile(rf'\bspeak[_\s]?{_LANG_FIELD_CODE_ALT}\b', re.IGNORECASE),
+    re.compile(rf'\b{_LANG_FIELD_CODE_ALT}[_\s]?(?:speak|response|reply|field|flag|version|output|text)\b', re.IGNORECASE),
+    # conditional fallback between two named languages: "Hindi ... if/unless/when
+    # the customer speaks/prefers/asks for ... English" — the Spinny
+    # speak_hi/speak_en pattern spelled out in prose instead of field names.
+    re.compile(
+        rf'\b{_LANG_NAME_ALT}\b[^.!?\n]{{0,80}}\b(?:if|unless|when)\b[^.!?\n]{{0,60}}'
+        rf'\bcustomer\b[^.!?\n]{{0,40}}\b(?:speaks?|prefers?|asks?\s+for|wants?)\b[^.!?\n]{{0,20}}{_LANG_NAME_ALT}\b',
+        re.IGNORECASE,
+    ),
+]
+
+
+def _unit_imposes_language_switch(text: str) -> bool:
+    """The single canonical check behind Guardrail B: true if this piece of text —
+    regardless of which pipeline stage it came from (main synthesis output,
+    extraction-sourced custom notes, or a user-typed customization) — asserts or
+    routes between spoken languages in a way no generated language document may
+    ever contain. Every call site in this file that needs this check (the main-body
+    stripper, the custom-notes filter, and the customization rejection check) calls
+    this exact function, so a fix here fixes all three at once rather than needing
+    three separate patches that happen to agree with each other."""
+    if not text or not text.strip():
+        return False
+    return any(p.search(text) for p in _LANGUAGE_IMPOSITION_PATTERNS)
+
+
+# The one sanctioned exception to Guardrail B: this system's own deterministic
+# language_commitment guarantee line ("You speak only colloquial Kannada
+# naturally...") legitimately names the document's own target language, by design,
+# and is held out of every internal filtering step for exactly that reason (see
+# commitment_chunk in _generate_one_language). A full generated document
+# necessarily contains this line, so the standing external scanner below needs to
+# recognize it specifically — not exempt same-language mentions generically, which
+# would also hide a genuine same-language violation elsewhere in the document
+# (e.g. a redundant, non-guaranteed "default language is Kannada" sentence the
+# synthesizer wrote on its own still belongs in NO document, guaranteed line or not).
+_LANG_CODE_TO_FULL_NAME = {
+    "EN": "english", "HI": "hindi", "KN": "kannada", "TA": "tamil", "ML": "malayalam",
+    "GU": "gujarati", "MR": "marathi", "TE": "telugu", "OD": "odia", "BN": "bengali",
+}
+
+
+def _is_own_language_commitment_line(sentence: str, expected_language: str) -> bool:
+    """True only for a sentence from this system's own fixed language_commitment
+    guarantee template naming exactly the expected language — see the module
+    comment above. The template is two sentences ("You speak only colloquial X
+    naturally..." and "...cannot speak in X at all..."), both of which
+    legitimately name X and must both be recognized, not just the first."""
+    lang_name = _LANG_CODE_TO_FULL_NAME.get(expected_language)
+    if not lang_name:
+        return False
+    patterns = (
+        rf'you\s+speak\s+only\s+colloquial\s+{lang_name}\s+naturally',
+        rf'cannot\s+speak\s+in\s+{lang_name}\s+at\s+all',
+    )
+    return any(re.search(p, sentence, re.IGNORECASE) for p in patterns)
+
+
+def scan_document_for_language_violations(document_text: str, expected_language: str = None) -> list:
+    """Standing automated check for Guardrail B: scans a fully generated document —
+    from a live generation, or fed in by an external regression-test script — for
+    any sentence naming another language in a switching/default/exclusivity
+    context, using the exact same canonical detector (_unit_imposes_language_switch)
+    that every injection point in this file is filtered through. Unlike the
+    pipeline's own stripping guarantees (which remove what they find as part of
+    generation), this is a pure, read-only detector meant to be run independently —
+    against a finished document — so a future regression of this class of bug
+    surfaces as a hard, visible failure in a test/verification run, rather than
+    requiring someone to notice it in a live generation again.
+
+    expected_language: when given (the language this document was generated for),
+    exempts ONLY this document's own fixed language_commitment guarantee line from
+    being flagged — the one sanctioned, by-design exception — while still flagging
+    every other match, including a same-language default/exclusivity statement
+    written anywhere else, since only the guarantee's own fixed line is exempt.
+
+    Returns the list of offending sentences found (empty if none)."""
+    if not document_text or not document_text.strip():
+        return []
+    sentences = re.split(r'(?<=[.!?])\s+', document_text)
+    violations = []
+    for sentence in sentences:
+        if not _unit_imposes_language_switch(sentence):
+            continue
+        if expected_language and _is_own_language_commitment_line(sentence, expected_language):
+            continue
+        violations.append(sentence.strip())
+    return violations
 
 
 def _strip_language_switching_instructions(output_text: str) -> tuple:
-    """Deterministically removes any sentence instructing a switch to a different
-    spoken language — this can only ever contradict the always-on
-    language_commitment guarantee (single language, never switch), which is why
-    this doesn't rely on the extractor or synthesizer prompts alone to keep it out.
-    Both of those reduce the CHANCE it appears; this makes its absence certain.
+    """Deterministically removes any sentence asserting or routing between spoken
+    languages (see _unit_imposes_language_switch) — this can only ever contradict
+    the always-on language_commitment guarantee (single language, never switch),
+    which is why this doesn't rely on the extractor or synthesizer prompts alone to
+    keep it out. Both of those reduce the CHANCE it appears; this makes its absence
+    certain.
 
-    Runs on the raw synthesized body BEFORE Guarantee 1 (custom notes) gets a
-    chance to force-append anything, on purpose: a business-specific override
-    that genuinely wants different language behavior (the exact scenario
-    language_commitment's own "a business-specific rule elsewhere in this prompt
-    ... takes precedence" clause exists for) is injected by Guarantee 1 AFTER
-    this runs, so it's never touched — only the generic, unintended kind of
-    switching instruction (leftover business-logic framing bleeding into a
-    "Persona"/"Style" section) gets caught here.
+    Per Guardrail B this is absolute — there is no "legitimate business override"
+    exemption here (an earlier version of this function left room for one, on the
+    theory that Guarantee 1's custom-notes injection might deliberately want
+    different language behavior; that theory was itself the root cause of a real
+    leak — see the custom-notes filtering in _generate_one_language, which now
+    applies this exact same check to custom notes BEFORE they're ever injected,
+    rather than exempting them).
 
     Returns (cleaned_text, count_removed).
     """
-    matches = _LANGUAGE_SWITCH_PATTERN.findall(output_text)
-    if not matches:
+    sentences = re.split(r'(?<=[.!?])\s+', output_text)
+    kept, removed = [], 0
+    for sentence in sentences:
+        if _unit_imposes_language_switch(sentence):
+            removed += 1
+        else:
+            kept.append(sentence)
+    if not removed:
         return output_text, 0
-    cleaned = _LANGUAGE_SWITCH_PATTERN.sub('', output_text)
+    cleaned = " ".join(kept)
     cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)  # collapse a run of spaces left where a mid-line sentence was removed
     cleaned = re.sub(r'\n[ \t]+', '\n', cleaned)  # drop a leading space left on the next line/paragraph start
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
-    return cleaned.strip(), len(matches)
+    return cleaned.strip(), removed
+
+
+def _filter_custom_notes_for_language_imposition(custom_notes: str) -> tuple:
+    """Applies the same Guardrail B check (_unit_imposes_language_switch) to
+    custom notes — from EITHER source that feeds this channel: extraction from a
+    raw business prompt (Stage 2), or a user-typed 'Customise Prompt' customization
+    — before they are ever injected into a generation. This is the actual fix for
+    cross-language contamination arriving via custom notes rather than the main
+    synthesized body: a real business rule ('default spoken language is Hindi via
+    speak_hi; use speak_en if the customer speaks English') survived extraction as
+    legitimate-looking custom-notes content and leaked into every language's
+    document, most visibly the English one, which ended up asserting its own
+    default was actually Hindi.
+
+    Checked per-unit (one sentence/bullet at a time, via _split_into_checkable_units)
+    rather than as one aggregate blob, for the same dilution reason already fixed
+    for wrong-script contamination: a single offending sentence must not be able to
+    hide inside a larger block of genuinely fine custom notes. The safer default
+    when a unit is flagged is to drop it entirely rather than try to rewrite it —
+    Guardrail B is absolute, and a language-routing rule doesn't belong in the
+    language layer at all (Guardrail A), so there is no per-language rewrite that
+    would make it acceptable to keep.
+
+    Returns (filtered_notes, removed_unit_count).
+    """
+    if not custom_notes.strip():
+        return custom_notes, 0
+    units = _split_into_checkable_units(custom_notes)
+    if not units:
+        return custom_notes, 0
+    kept, removed = [], 0
+    for unit in units:
+        if _unit_imposes_language_switch(unit):
+            removed += 1
+        else:
+            kept.append(unit)
+    return "\n".join(kept), removed
 
 
 # Fixed, literal phrases that only ever appear in this codebase's OWN internal
@@ -806,6 +979,20 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
               f"{wrong_lang_in_notes}, not {lang}'s own custom notes.")
         custom_notes = ""
 
+    # GUARDRAIL B, applied at the custom-notes injection point — this is the actual
+    # fix for the tool-field language-routing rule (e.g. "default spoken language is
+    # Hindi via speak_hi; use speak_en if the customer speaks English") that survived
+    # extraction from a raw business prompt and leaked into every language's
+    # document, most visibly the English one asserting its own default was Hindi.
+    # This is the SAME detector (_unit_imposes_language_switch) used below on the
+    # main synthesized body and in generate_language_prompts_multi's customization
+    # rejection check — one mechanism, three injection points, not three patches.
+    if custom_notes.strip():
+        custom_notes, imposition_units_removed = _filter_custom_notes_for_language_imposition(custom_notes)
+        if imposition_units_removed:
+            print(f"  ⚠ Discarded {imposition_units_removed} custom-notes line(s) for '{lang}' — "
+                  f"detected as a language-switching/imposition rule (Guardrail B).")
+
     output_text = None
     lang_warnings = []
     script_correction_note = ""
@@ -903,12 +1090,11 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
             f"retry and a final corrective attempt. No usable prompt was produced."
         ]
 
-    # GUARANTEE 5: never ship a language-switching instruction. Placed here — after
-    # the synthesized body is final but before Guarantee 1 can inject a legitimate
-    # business-specific override — so it structurally cannot contradict the always-on
-    # language_commitment guarantee, regardless of what the extractor or synthesizer
-    # prompts let through. See _strip_language_switching_instructions for why this
-    # ordering matters.
+    # GUARANTEE 5: never ship a language-switching/imposition instruction (Guardrail
+    # B), applied here to the main synthesized body. custom_notes was already put
+    # through the identical check above before this point, so Guarantee 1 below can
+    # never reintroduce one — there is no "legitimate override" exemption for either
+    # source, per Guardrail B being absolute.
     output_text, switch_removed = _strip_language_switching_instructions(output_text)
     if switch_removed:
         print(f"  ⚠ {lang}: removed {switch_removed} language-switching instruction(s) "
@@ -1145,37 +1331,29 @@ _TONE_CUES = ["tone", "colloquial", "register", "casual", "formal style", "pacin
 # A per-request "Customise Prompt" text box must never be able to override WHICH
 # language is fundamentally being spoken — that's exactly what the always-on
 # language_commitment guarantee exists to make un-overridable except by the
-# business's own actual logic (see _strip_language_switching_instructions above,
-# which strips the same class of thing when it leaks in from business logic). A
-# real production customization ("Speak only in Hindi, maintaining Hindi grammar and
-# sentence structure") reached this far and got misclassified as an unrelated
-# category ('preserve_english', because a companion clause about English happened to
-# be in the same free-text box) instead of being rejected outright. This pattern is
-# checked FIRST, before any category classification runs, and independently of
-# whichever language is currently being generated — a customization that names a
-# spoken language and asserts it as the one to use is rejected for every requested
-# language, not just the one it happens to name, since a text box like this should
-# never be able to touch language identity at all, matched or not.
-_LANGUAGE_IDENTITY_OVERRIDE_PATTERN = re.compile(
-    r'\b(?:speak|talk|converse|communicate|respond|reply)\w*\s+(?:only\s+|solely\s+|purely\s+)?(?:in|using)\s+'
-    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
-    r'|\bswitch(?:es|ing|ed)?\s+(?:back\s+)?(?:to|into)\s+(?:speaking\s+)?'
-    r'(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\b'
-    r'|\buse\s+(?:english|hindi|kannada|tamil|malayalam|gujarati|marathi|telugu|odia|oriya|bengali)\s+'
-    r'(?:language\s+)?throughout\b',
-    re.IGNORECASE,
-)
-
-
+# business's own actual logic. A real production customization ("Speak only in
+# Hindi, maintaining Hindi grammar and sentence structure") reached this far and got
+# misclassified as an unrelated category ('preserve_english', because a companion
+# clause about English happened to be in the same free-text box) instead of being
+# rejected outright. This is checked FIRST, before any category classification
+# runs, and independently of whichever language is currently being generated — a
+# customization that names a spoken language and asserts it as the one to use is
+# rejected for every requested language, not just the one it happens to name.
+#
+# This delegates to _unit_imposes_language_switch — the exact same detector used to
+# strip the main synthesized body and to filter extraction-sourced custom notes
+# (see _strip_language_switching_instructions and
+# _filter_custom_notes_for_language_imposition above) — rather than its own separate
+# pattern, so all three sources are provably governed by one mechanism, not three
+# patches that happen to agree with each other.
 def _customization_overrides_language_identity(instruction: str) -> bool:
     """True if the customization's own text amounts to asserting which spoken
     language the agent uses at all (e.g. "speak only in Hindi", "switch to English",
-    "use Kannada throughout") — as opposed to a rule about how to say something
-    WITHIN whichever language is already being generated. This must be rejected
-    outright rather than classified into any category, matched or not."""
-    if not instruction or not instruction.strip():
-        return False
-    return bool(_LANGUAGE_IDENTITY_OVERRIDE_PATTERN.search(instruction))
+    "use Kannada throughout", or a speak_hi/speak_en-style field reference) — as
+    opposed to a rule about how to say something WITHIN whichever language is
+    already being generated. This must be rejected outright rather than classified
+    into any category, matched or not."""
+    return _unit_imposes_language_switch(instruction)
 
 
 def _classify_customization(instruction: str) -> tuple:
@@ -1487,7 +1665,52 @@ For all languages, compress generic number/currency lookup lists into their read
 
 For all languages, compress generic date/time guidance into a short pattern with meaningful exceptions and at most one source example. Do not copy minute-by-minute or year-by-year example lists. Preserve explicit business-specific corrections and exact values.
 
-Output ONLY the extracted custom language/speech rules (item 2), removing all flow-control content (item 1) entirely. Do not summarize, paraphrase, shorten, or reword the custom rules — copy them close to verbatim so no specific figure or spelling is lost, EXCEPT for mechanically-derivable lists per the compression rule above. If there is genuinely nothing that qualifies as a custom language rule in this text, output nothing at all (an empty response is correct and expected in that case, do not invent content to fill space)."""
+Output ONLY the extracted custom language/speech rules (item 2), removing all flow-control content (item 1) entirely. Do not summarize, paraphrase, shorten, or reword the custom rules — copy them close to verbatim so no specific figure or spelling is lost, EXCEPT for mechanically-derivable lists per the compression rule above. If there is genuinely nothing that qualifies as a custom language rule in this text, output nothing at all (an empty response is correct and expected in that case, do not invent content to fill space).
+
+NEVER PREFACE THE OUTPUT WITH ANY NARRATING OR CONVERSATIONAL FRAMING — no "Here are the custom language and speech rules extracted from the document:", no "Sure, here is...", no "The following rules were found:", no summary sentence of what you did before or after the rules, and no closing remark. This output is fed directly into a customer-facing voice AI document as-is, verbatim — any such framing sentence would ship into that document exactly as written, not as a description of your work. Output rule content only, starting on the very first line, or nothing at all."""
+
+
+# Matches a leading conversational preamble line/sentence (e.g. "Here are the
+# custom language and speech rules extracted from the document:", "Sure, here is
+# the extracted content:", "The following rules were found:") that the extraction
+# model sometimes prepends before the actual content despite
+# CUSTOM_LANGUAGE_NOTES_SYSTEM_PROMPT explicitly forbidding it. Guarantee 1
+# downstream (_generate_one_language) has no way to distinguish this from genuine
+# custom-notes content — it faithfully preserves whatever custom_notes contains —
+# so it must be caught here, at the source, before it's ever treated as real
+# content.
+#
+# A preamble is reliably a SHORT leading line ending in a colon (anchored to the
+# very start of the string, never mid-document) that narrates what the model is
+# about to do rather than stating a rule — gated on a cue-phrase list rather than
+# one fixed sentence shape, since "here are the rules:", "the following were
+# found:", and "I've extracted:" all narrate the same way in different words. A
+# genuine custom rule's own leading colon-terminated clause (e.g. "Sacred names
+# policy: always write in Devanagari") never matches any cue below, so this can't
+# mistake real content for a preamble.
+_EXTRACTION_PREAMBLE_LEADING_LINE = re.compile(r'^\s*([^\n]{0,160}?):\s*\n?')
+_EXTRACTION_PREAMBLE_CUES = [
+    "here are", "here is", "here's", "the following", "below are", "below is",
+    "i've extracted", "i have extracted", "were found", "was found", "found the following",
+    "extracted from the document", "extracted content", "extracted rules", "extracted custom",
+]
+
+
+def _strip_extraction_preamble(text: str) -> tuple:
+    """Deterministic defense-in-depth for the extraction-preamble leak — the same
+    'don't just ask nicely, strip it deterministically' pattern already used
+    elsewhere in this file (see _strip_customization_meta_leak,
+    _strip_language_switching_instructions). Returns (cleaned_text, count_removed —
+    0 or 1, since a preamble can only ever be the leading line)."""
+    if not text:
+        return text, 0
+    match = _EXTRACTION_PREAMBLE_LEADING_LINE.match(text)
+    if not match:
+        return text, 0
+    leading_line = match.group(1).lower()
+    if not any(cue in leading_line for cue in _EXTRACTION_PREAMBLE_CUES):
+        return text, 0
+    return text[match.end():].lstrip(), 1
 
 
 def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MODEL, max_retries: int = 1) -> str:
@@ -1510,6 +1733,10 @@ def extract_custom_language_notes(node_instruction: str, model: str = DEFAULT_MO
             config=_build_config(model, max_output_tokens=8000)
         )
         result = (response.text or "").strip()
+        if result:
+            result, preamble_removed = _strip_extraction_preamble(result)
+            if preamble_removed:
+                print("  ⚠ Stripped a conversational preamble from extracted custom notes.")
         if result:
             return result
         if attempt < max_retries:
