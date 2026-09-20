@@ -288,32 +288,43 @@ Output the final language prompt only, no commentary.""" + "\n\n" + LANGUAGE_OUT
 
 
 def synthesize_language_prompt(business_logic: str, relevant_chunks: list, language: str, model: str = DEFAULT_MODEL,
-                               custom_notes: str = "", customization_category: str = None,
-                               customization_is_new_section: bool = False) -> str:
+                               custom_notes: str = "", custom_instruction: str = "",
+                               customization_category: str = None, agent_gender_directive: str = "") -> str:
     model = _resolve_model(model)
     chunks_text = "\n\n".join([f"[{c['category']}]\n{c['content']}" for c in relevant_chunks])
 
-    # This is INSTRUCTION TO THE MODEL about how to place the custom rules below, kept
-    # in its own paragraph, explicitly and separately, and OUTSIDE the "include exactly
-    # as given, never omit" scope of custom_notes_block below. Putting integration
-    # guidance like this inside the same text as custom_notes was a real production
-    # leak: custom_notes_block's own wording ("include every one of them in the output,
-    # exactly as given") applied to the guidance sentence too when it was appended
-    # directly onto the custom-notes content, so a compliant model reproduced the
-    # guidance itself verbatim into the customer-facing document, alongside the actual
-    # rule. Keeping this paragraph separate — and telling the model explicitly never to
-    # reproduce it — means only the actual content in custom_notes_block is ever subject
-    # to the "include exactly as given" instruction.
-    customization_guidance_block = ""
-    if customization_category:
-        category_label = customization_category.replace("_", " ")
-        customization_guidance_block = f"""
+    # Centrally-determined agent gender (see detect_agent_gender / generate_language_prompts_multi)
+    # — placed prominently, ahead of the relevant chunks, so the model resolves the
+    # agent_gender chunk's own conditional grammar guidance against ONE shared fact
+    # instead of inventing or defaulting a gender independently per language. This is
+    # the actual fix for two languages asserting OPPOSITE genders for the same
+    # unstated persona in the same request.
+    agent_gender_block = f"\n\n{agent_gender_directive.strip()}" if agent_gender_directive.strip() else ""
 
-INTERNAL WRITING GUIDANCE — for you only, never quote, paraphrase, or otherwise output any part of this paragraph, it is not document content: one of the custom rules below is a one-off customization for this specific generation that belongs under your existing '{category_label}' guidance. Merge or reinforce it into that section instead of creating a separate one for it. Do not explain this categorization or mention that anything was merged — only the rule's own content may appear in your output."""
-    elif customization_is_new_section:
-        customization_guidance_block = """
+    # A per-request "Customise Prompt" instruction is now GUARANTEED to appear as
+    # its own labeled section in the final output, deterministically appended by
+    # code after this function returns (see _generate_one_language) — never left to
+    # the model's own compliance. That deterministic append is what actually fixes
+    # the reliability problem (it worked for 2 of 3 languages in the same request
+    # under the old "ask the model to merge or create a section" design); this
+    # block's only remaining job is to let the customization's ACTUAL EFFECT still
+    # show up naturally within the relevant existing section's prose where useful
+    # (e.g. an English-currency customization should make the Currency section's
+    # own examples actually use English), without the model also trying to render
+    # its own redundant section for it.
+    customization_block = ""
+    if custom_instruction.strip():
+        category_note = (
+            f" This relates to your existing '{customization_category.replace('_', ' ')}' guidance above — "
+            f"where relevant, apply its actual effect within that section's own prose (e.g. change how "
+            f"an example in that section is written), rather than only restating the rule."
+            if customization_category else ""
+        )
+        customization_block = f"""
 
-INTERNAL WRITING GUIDANCE — for you only, never quote, paraphrase, or otherwise output any part of this paragraph, it is not document content: one of the custom rules below is a one-off customization for this specific generation that does not fit any of your existing rule categories. Give it its own clearly labeled new section (e.g. "### Custom Instruction"). Do not explain this categorization — only the rule's own content may appear in your output."""
+BUSINESS-SPECIFIC CUSTOMIZATION FOR THIS GENERATION — apply its real effect wherever relevant in your document:
+{custom_instruction.strip()}{category_note}
+A separate, clearly labeled section for this exact instruction is appended automatically after your output — do not create a section titled "Custom Instruction" (or similar) yourself, and do not mention that this is a customization, override, or special instruction; just let it naturally affect the relevant part of what you write."""
 
     custom_notes_block = ""
     if custom_notes.strip():
@@ -326,10 +337,10 @@ These rules are specific to this business and were extracted directly from its o
     full_prompt = f"""{SYNTHESIZER_SYSTEM_PROMPT}
 
 BUSINESS LOGIC CONTEXT (for relevance only, do not include in output):
-{business_logic}
+{business_logic}{agent_gender_block}
 
 RELEVANT LANGUAGE CHUNKS FOR {language}:
-{chunks_text}{customization_guidance_block}{custom_notes_block}"""
+{chunks_text}{customization_block}{custom_notes_block}"""
 
     # Every downstream guarantee layer (custom notes, invariants, script check, review)
     # operates on whatever text this function returns — none of them ever checked
@@ -901,7 +912,8 @@ def _strip_customization_meta_leak(output_text: str) -> tuple:
 def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: list,
                             model: str, max_retries: int, custom_notes: str = "",
                             skip_review: bool = False, customization_guarantee_domain: str = None,
-                            customization_category: str = None, customization_is_new_section: bool = False) -> tuple:
+                            custom_instruction: str = "", customization_category: str = None,
+                            agent_gender_directive: str = "") -> tuple:
     """Generate (and retry-check) the prompt for a single language. Runs inside a worker thread.
 
     GUARANTEE LAYER — this is the part that makes silent content loss structurally
@@ -1004,8 +1016,9 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         # in the wrong language and must not be again.
         retry_notes = (script_correction_note + "\n\n" + custom_notes).strip() if script_correction_note else custom_notes
         output_text = synthesize_language_prompt(clean_business_logic, synthesis_chunks, lang, model=model, custom_notes=retry_notes,
+                                                  custom_instruction=custom_instruction,
                                                   customization_category=customization_category,
-                                                  customization_is_new_section=customization_is_new_section)
+                                                  agent_gender_directive=agent_gender_directive)
 
         wrong_script_lang = _detect_script_mismatch(output_text, lang) or _detect_hindi_marathi_confusion(output_text, lang)
         lang_warnings = check_text_against_invariants(output_text, triggered_tags, _INVARIANTS)
@@ -1053,8 +1066,9 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         last_resort_text = synthesize_language_prompt(
             clean_business_logic, synthesis_chunks, lang,
             model=DEFAULT_REVIEW_MODEL, custom_notes=last_resort_notes.strip(),
+            custom_instruction=custom_instruction,
             customization_category=customization_category,
-            customization_is_new_section=customization_is_new_section
+            agent_gender_directive=agent_gender_directive
         )
         last_resort_wrong_lang = (_detect_script_mismatch(last_resort_text, lang)
                                    or _detect_hindi_marathi_confusion(last_resort_text, lang))
@@ -1200,6 +1214,8 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
     source_rules = "\n\n".join(f"[{c['category']}]\n{c['content']}" for c in synthesis_chunks)
     if custom_notes.strip():
         source_rules += "\n\n[Business-specific language requirements]\n" + custom_notes
+    if custom_instruction.strip():
+        source_rules += "\n\n[User customization for this generation]\n" + custom_instruction
 
     # Snapshot of the body BEFORE the review/fix pass — it's already been verified
     # language-correct (either it passed the retry loop cleanly, or the last-resort
@@ -1254,6 +1270,22 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
         guaranteed_header.append(gender_neutral_chunk["content"].strip())
     if guaranteed_header:
         output_text = "\n\n".join(guaranteed_header) + "\n\n" + output_text.lstrip()
+
+    # GUARANTEE 6: a "Customise Prompt" instruction always renders as its own
+    # clearly labeled, distinct section — unconditionally appended by code, never
+    # left to the model's own compliance. This directly replaces the earlier
+    # design (ask the model to merge it into a matching category, or invent its
+    # own section) that worked for 2 of 3 languages in the same real request and
+    # silently no-op'd for the third: relying on synthesis fidelity and a fuzzy
+    # per-unit coverage-ratio check (designed for aggregate business custom notes,
+    # not a single one-off UI instruction) meant its presence depended on
+    # incidental per-language content, not a guarantee. Appended last, after the
+    # review/fix pass, so nothing downstream can move, reword, or drop it — same
+    # positioning principle as commitment_chunk and gender_neutral_chunk above.
+    if custom_instruction.strip():
+        output_text = output_text.rstrip() + (
+            "\n\n### Custom Instruction (user-specified)\n" + custom_instruction.strip()
+        )
 
     return lang, output_text, lang_warnings
 
@@ -1396,7 +1428,7 @@ def _classify_customization(instruction: str) -> tuple:
 def generate_language_prompts_multi(clean_business_logic: str, languages: list, chunks_file="chunks.json",
                                      model: str = DEFAULT_MODEL, max_retries: int = 3,
                                      max_workers: int = 4, custom_notes_by_language: dict = None,
-                                     custom_instruction: str = "") -> dict:
+                                     custom_instruction: str = "", agent_gender: str = "unspecified") -> dict:
     """Business logic is already clean — skip extraction, generate scoped language prompts for multiple languages.
 
     Languages are generated CONCURRENTLY (up to max_workers at once) since each language is an
@@ -1413,14 +1445,23 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
 
     custom_instruction: optional free-text "Customise Prompt" instruction for this one generation
     (e.g. "Price or currency should always be spoken in English"), applied identically to every
-    requested language. Matched against the existing chunk categories (see _classify_customization)
-    so it reinforces a matching category instead of creating a redundant or conflicting section.
-    Only the instruction's own raw text is ever fed into the per-request custom-notes channel that
-    gives custom notes real authority over generic chunk defaults — the categorization/integration
-    guidance is kept entirely separate (see synthesize_language_prompt's customization_guidance_block)
-    so it can never itself leak into customer-facing output. Never persisted to chunks.json. A
-    customization that amounts to overriding which language is spoken at all (e.g. "speak only in
-    Hindi") is rejected outright rather than classified — see _customization_overrides_language_identity.
+    requested language via its own dedicated parameter into _generate_one_language — never merged
+    into the custom_notes channel (an earlier design did this, and relying on synthesis fidelity
+    plus a fuzzy per-unit coverage-ratio check meant for aggregate business notes, not a single
+    UI instruction, made its presence unreliable: it appeared in 2 of 3 languages in the same real
+    request and silently no-op'd for the third). It is now ALWAYS rendered as its own distinct,
+    clearly labeled section, appended deterministically by code — see Guarantee 6 in
+    _generate_one_language — never merged into or absorbed by an existing category's section, and
+    never dependent on the model's own compliance for whether it appears at all. It is still
+    matched against the existing chunk categories (see _classify_customization) so its ACTUAL
+    EFFECT can additionally inform the relevant section's own prose where useful, but that's a
+    bonus, not what guarantees its presence. Never persisted to chunks.json. A customization that
+    amounts to overriding which language is spoken at all (e.g. "speak only in Hindi") is rejected
+    outright rather than classified — see _customization_overrides_language_identity.
+
+    agent_gender: optional centrally-determined agent gender for this business — "male", "female",
+    or "unspecified" (see detect_agent_gender). Threaded identically into every requested language's
+    generation so gender is decided ONCE, not independently reinterpreted per language.
 
     Returns {"prompts": {lang: text}, "warnings": {lang: [violation strings]}}.
     """
@@ -1434,7 +1475,6 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
     custom_instruction = (custom_instruction or "").strip()
     matched_category = None
     customization_guarantee_domain = None
-    customization_is_new_section = False
     customization_rejected_warning = None
 
     if custom_instruction and _customization_overrides_language_identity(custom_instruction):
@@ -1454,16 +1494,8 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
         custom_instruction = ""
     elif custom_instruction:
         matched_category, customization_guarantee_domain = _classify_customization(custom_instruction)
-        customization_is_new_section = matched_category is None
-        # Only the user's own words go into the custom-notes channel — the "which category
-        # does this belong to" guidance is passed separately (customization_category /
-        # customization_is_new_section below) and kept out of the "include exactly as
-        # given" custom-notes instruction entirely, since mixing the two was the actual
-        # cause of a production leak (internal integration guidance shipped verbatim in a
-        # customer-facing document — see synthesize_language_prompt).
-        for lang in languages:
-            existing = custom_notes_by_language.get(lang, "")
-            custom_notes_by_language[lang] = (existing + "\n\n" + custom_instruction).strip() if existing else custom_instruction
+
+    agent_gender_directive = _build_agent_gender_directive(agent_gender)
 
     effective_max_retries, skip_review = _adaptive_limits(len(clean_business_logic), max_retries)
     if skip_review:
@@ -1474,7 +1506,7 @@ def generate_language_prompts_multi(clean_business_logic: str, languages: list, 
         futures = {
             executor.submit(_generate_one_language, clean_business_logic, lang, all_chunks, model, effective_max_retries,
                              custom_notes_by_language.get(lang, ""), skip_review, customization_guarantee_domain,
-                             matched_category, customization_is_new_section): lang
+                             custom_instruction, matched_category, agent_gender_directive): lang
             for lang in languages
         }
         for future in as_completed(futures):
@@ -1622,6 +1654,86 @@ def detect_declared_language_scope(business_logic: str, model: str = DEFAULT_MOD
         if code and code not in declared:
             declared.append(code)
     return declared
+
+
+# ---------- STAGE: Agent Gender — determined once, applied identically everywhere ----------
+
+AGENT_GENDER_SYSTEM_PROMPT = """You are given a business's raw system prompt (or its already-cleaned business logic) for a voice AI agent. Determine whether the business explicitly states the AGENT's own gender anywhere — not the customer's gender, the agent's own.
+
+Look for a direct statement of the agent's own gender: "You are female", "The agent is male", "refer to yourself in feminine verb forms", "Sona, a female representative", or an unambiguous first-person gendered framing tied to the agent's own persona.
+
+A name alone (e.g. "Vinayak", "Sona", "Ravi", "Priya") is NOT a gender statement, even if the name is conventionally associated with one gender — many names are ambiguous, used across genders, or simply not a reliable signal, and this system must never guess or infer a gender from a name alone.
+
+If the business explicitly states the agent is male, output exactly: MALE
+If the business explicitly states the agent is female, output exactly: FEMALE
+If the business does not explicitly state the agent's own gender anywhere, output exactly: UNSPECIFIED
+
+Do not guess or infer from indirect signals like a name, a persona description with no gender word, or a tone description. Only report MALE or FEMALE if a real, direct, unambiguous statement of the agent's own gender exists in the text; otherwise report UNSPECIFIED."""
+
+
+def detect_agent_gender(business_logic: str, model: str = DEFAULT_MODEL) -> str:
+    """Determines the agent's gender ONCE, directly from the business's own prompt,
+    the same way declared language scope is determined once rather than left to
+    each language's own synthesis call to decide independently. This is the fix for
+    a real production case: a business named its agent "Vinayak" but never stated a
+    gender anywhere, and the English document asserted male, the Hindi document
+    asserted female, and only the Kannada document correctly deferred — three
+    languages in the same request disagreeing (two of them asserting OPPOSITE
+    genders for the same persona) because each one's synthesis call independently
+    invented or defaulted a gender, with no shared source of truth to agree on.
+
+    Returns "male", "female", or "unspecified" — the single determination every
+    requested language's generation must then use identically (see
+    _build_agent_gender_directive)."""
+    model = _resolve_model(model)
+    if not business_logic.strip():
+        return "unspecified"
+    full_prompt = f"{AGENT_GENDER_SYSTEM_PROMPT}\n\n---BUSINESS PROMPT---\n{business_logic[:6000]}"
+    response = client.models.generate_content(
+        model=model,
+        contents=full_prompt,
+        config=_build_config(model, max_output_tokens=20)
+    )
+    result = (response.text or "").strip().upper()
+    if result == "MALE":
+        return "male"
+    if result == "FEMALE":
+        return "female"
+    return "unspecified"
+
+
+def _build_agent_gender_directive(agent_gender: str) -> str:
+    """Builds the single, fixed, language-agnostic directive injected identically
+    into every requested language's synthesis call — the actual fix for gender
+    being decided independently per language. The per-language agent_gender CHUNK
+    in chunks.json still supplies the language-specific GRAMMATICAL MECHANICS
+    (which verb endings, which pronoun, for each case); this directive supplies the
+    single centrally-determined FACT of which case applies, so every language
+    resolves that same chunk's conditional guidance the same way instead of each
+    one guessing on its own."""
+    agent_gender = (agent_gender or "unspecified").lower()
+    if agent_gender == "male":
+        return (
+            "AGENT GENDER — determined once for this business from its own source prompt, "
+            "identical for every language, do not reinterpret or override: the agent is MALE. "
+            "Apply this consistently using this language's own male self-reference forms per "
+            "the agent-gender guidance below."
+        )
+    if agent_gender == "female":
+        return (
+            "AGENT GENDER — determined once for this business from its own source prompt, "
+            "identical for every language, do not reinterpret or override: the agent is FEMALE. "
+            "Apply this consistently using this language's own female self-reference forms per "
+            "the agent-gender guidance below."
+        )
+    return (
+        "AGENT GENDER — determined once for this business from its own source prompt, identical "
+        "for every language, do not reinterpret or override: this business's own prompt does NOT "
+        "state the agent's gender. Do not assume, guess, or assert a gender for the agent — "
+        "including never inferring one from the agent's name alone. Use neutral, deployment-"
+        "configured, or gender-non-specific self-reference forms consistently, per the "
+        "agent-gender guidance below."
+    )
 
 
 # ---------- STAGE 2: Custom Language Notes Extractor ----------
