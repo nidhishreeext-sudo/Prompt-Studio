@@ -1273,19 +1273,55 @@ def _generate_one_language(clean_business_logic: str, lang: str, all_chunks: lis
 
     # GUARANTEE 6: a "Customise Prompt" instruction always renders as its own
     # clearly labeled, distinct section — unconditionally appended by code, never
-    # left to the model's own compliance. This directly replaces the earlier
-    # design (ask the model to merge it into a matching category, or invent its
-    # own section) that worked for 2 of 3 languages in the same real request and
-    # silently no-op'd for the third: relying on synthesis fidelity and a fuzzy
-    # per-unit coverage-ratio check (designed for aggregate business custom notes,
-    # not a single one-off UI instruction) meant its presence depended on
-    # incidental per-language content, not a guarantee. Appended last, after the
-    # review/fix pass, so nothing downstream can move, reword, or drop it — same
-    # positioning principle as commitment_chunk and gender_neutral_chunk above.
+    # left to the model's own compliance, and never conditioned on whether it
+    # appears to have "already been covered" elsewhere in the document. That
+    # unconditional rule is deliberate and non-negotiable: an earlier version of
+    # this guarantee relied on a coverage-style check to decide whether the
+    # customization needed to be added, and that exact shape of check is what let
+    # a customization silently vanish from Kannada in an earlier round while
+    # working fine for English and Hindi in the same request. Making this
+    # unconditional is what actually closed that gap — a second, always-present
+    # check can't have the same blind spot as the first one it's guarding against.
+    #
+    # What CAN change, safely, is how this guaranteed section is WORDED — nothing
+    # about when or whether it renders. When the customization was woven into an
+    # existing category (customization_category is set), the model was already
+    # asked to apply its real effect within that section's own prose (see
+    # synthesize_language_prompt's customization_block), so unconditionally
+    # repeating the raw instruction again as a bare, unexplained second rule reads
+    # like two competing instructions that happen to agree, rather than one
+    # instruction with two touchpoints. Framing this section as an explicit
+    # CONFIRMATION of what was already applied above makes that relationship
+    # explicit instead of leaving the reader to infer it — but WITHOUT naming a
+    # specific section title: the model's actual header wording (e.g. "Numbers,
+    # Currency, and Prices") is free text the model chooses at synthesis time, and
+    # customization_category is our own internal classification label (e.g.
+    # "preserve_english"); the two are frequently different strings describing the
+    # same thing, so pointing at "see {internal label}" made a claim about the
+    # document's actual headings that this code has no way to guarantee is true.
+    # Naming no section at all is the honest version of the same confirmation.
+    # When nothing matched (customization_category is None), there is no "above"
+    # to point to at all, so this section is the only place the rule exists and
+    # must still read as a real, actionable instruction, not an empty confirmation
+    # pointing at nothing.
+    #
+    # Appended last, after the review/fix pass, so nothing downstream can move,
+    # reword, or drop it — same positioning principle as commitment_chunk and
+    # gender_neutral_chunk above.
     if custom_instruction.strip():
-        output_text = output_text.rstrip() + (
-            "\n\n### Custom Instruction (user-specified)\n" + custom_instruction.strip()
-        )
+        instruction_text = custom_instruction.strip()
+        if customization_category:
+            output_text = output_text.rstrip() + (
+                "\n\n### Custom Instruction — Confirmation\n"
+                f'You requested: "{instruction_text}" — this has been applied in the '
+                f"appropriate section above."
+            )
+        else:
+            output_text = output_text.rstrip() + (
+                "\n\n### Custom Instruction\n"
+                f'You requested: "{instruction_text}" — this did not match an existing rule '
+                f"category, so it is included here as its own instruction:\n\n{instruction_text}"
+            )
 
     return lang, output_text, lang_warnings
 
