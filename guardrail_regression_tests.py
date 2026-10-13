@@ -152,7 +152,8 @@ def test_customization_rejection_regression():
     main._generate_one_language_orig = main._generate_one_language
 
     def fake_gen_one(clean_business_logic, lang, all_chunks, model, max_retries, custom_notes="", skip_review=False,
-                      customization_guarantee_domain=None, customization_category=None, customization_is_new_section=False):
+                      customization_guarantee_domain=None, custom_instruction="", customization_category=None,
+                      agent_gender_directive=""):
         return lang, f"body for {lang}", []
 
     main._generate_one_language = fake_gen_one
