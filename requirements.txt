@@ -3,3 +3,4 @@ python-dotenv
 flask
 gunicorn
 psycopg2-binary
+./flow_guard

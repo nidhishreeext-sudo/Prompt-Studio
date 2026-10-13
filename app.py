@@ -19,6 +19,8 @@ from main import (
     DEFAULT_MODEL,
     DEFAULT_REVIEW_MODEL,
 )
+from flow_output import distill_flow, build_output_flow
+from flow_check import run_flow_check
 
 app = Flask(__name__, static_folder="static")
 db.init_db()
@@ -109,7 +111,14 @@ def generate():
         if universal_notes:
             custom_notes_by_language = {lang: universal_notes for lang in languages}
 
-    if mode == "extract":
+    flow_distillation = None
+    if mode == "extract" and flow_json:
+        # Per field rather than once over the flattened document, so each
+        # distilled field can be written back into its own place in the output
+        # flow. business_logic keeps the exact flattened layout used above.
+        flow_distillation = distill_flow(flow_json, model=model)
+        business_logic = flow_distillation.business_logic
+    elif mode == "extract":
         business_logic = extract_business_logic(raw_prompt, model=model)
     else:
         business_logic = raw_prompt  # already clean — passed through untouched, never re-processed
@@ -159,7 +168,25 @@ def generate():
     }
     if scope_warning:
         response["scope_warning"] = scope_warning
+    if flow_json:
+        response.update(_flow_outputs(flow_json, flow_distillation, result["prompts"]))
     return jsonify(response)
+
+
+def _flow_outputs(flow_json, flow_distillation, language_prompts):
+    """The output flow plus its integrity check, for flow-JSON inputs only.
+    Same principle as DB logging: a failure here never fails the generation,
+    the language prompts above are returned regardless."""
+    notes = list(flow_distillation.notes) if flow_distillation else []
+    try:
+        output = build_output_flow(flow_json, flow_distillation, language_prompts)
+    except Exception as e:
+        traceback.print_exc()
+        return {"flow_json": None, "flow_check": {"error": f"Could not build the output flow: {e}"},
+                "flow_field_notes": notes}
+    flow_check = run_flow_check(flow_json, output.flow, rewritten_paths=output.rewritten_paths,
+                                attached_keys=output.attached_keys, created_prompts=output.created_prompts)
+    return {"flow_json": output.flow, "flow_check": flow_check, "flow_field_notes": notes + output.notes}
 
 
 @app.route("/api/comment", methods=["POST"])

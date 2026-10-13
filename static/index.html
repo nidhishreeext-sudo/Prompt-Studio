@@ -28,6 +28,12 @@
             --pill-purple-bg: #f4f3ff;
             --pill-purple-text: #6941c6;
             --pill-purple-border: #d9d6fe;
+            --pill-green-bg: #ecfdf3;
+            --pill-green-text: #067647;
+            --pill-green-border: #abefc6;
+            --pill-red-bg: #fef3f2;
+            --pill-red-text: #b42318;
+            --pill-red-border: #fecdca;
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 14px;
@@ -56,6 +62,12 @@
             --pill-purple-bg: #201c33;
             --pill-purple-text: #b9a3f5;
             --pill-purple-border: #372f57;
+            --pill-green-bg: #0f2a1c;
+            --pill-green-text: #75e0a7;
+            --pill-green-border: #1c4a31;
+            --pill-red-bg: #2f1414;
+            --pill-red-text: #fda29b;
+            --pill-red-border: #55211e;
             --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
             --shadow-pop: 0 4px 16px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
         }
@@ -680,6 +692,45 @@
                 margin-bottom: 3px;
             }
 
+            .warning-banner.flow-pass {
+                background: var(--pill-green-bg);
+                border-color: var(--pill-green-border);
+                color: var(--pill-green-text);
+            }
+
+            .warning-banner.flow-fail {
+                background: var(--pill-red-bg);
+                border-color: var(--pill-red-border);
+                color: var(--pill-red-text);
+            }
+
+            .warning-banner.flow-neutral {
+                background: var(--pill-gray-bg);
+                border-color: var(--border);
+                color: var(--pill-gray-text);
+            }
+
+            .warning-banner details {
+                margin-top: 6px;
+            }
+
+            .warning-banner summary {
+                cursor: pointer;
+                font-weight: 600;
+            }
+
+            .flow-check-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: 8px;
+            }
+
+            .flow-check-meta {
+                margin-top: 2px;
+                opacity: 0.85;
+            }
+
         .output-content {
             flex: 1;
             padding: 16px;
@@ -1011,6 +1062,9 @@
         // customization, not a permanent change to the chunk library, so it
         // intentionally does not persist across page reloads.
         let customInstruction = "";
+        // Name of the uploaded input file, used for the output flow's download name.
+        let uploadedFileName = "";
+        const FLOW_TAB = "__flow__";
 
         const SAMPLE_PROMPT = `You are Sona, a sales representative from Muthoot Finance Gold Loan team.
 Refer to yourself only in feminine Hindi verb forms (for example मैं बोल रही हूँ).
@@ -1196,6 +1250,7 @@ Ask how much loan amount they are looking for.`;
             el("fileInput").addEventListener("change", (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                uploadedFileName = file.name;
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     inputArea.value = ev.target.result;
@@ -1207,6 +1262,7 @@ Ask how much loan amount they are looking for.`;
             el("resetBtn").addEventListener("click", () => {
                 inputArea.value = "";
                 inputCharCount.textContent = "0 chars";
+                uploadedFileName = "";
                 lastResult = null;
                 closeFeedbackPanel();
                 renderEmptyOutput();
@@ -1257,6 +1313,7 @@ Ask how much loan amount they are looking for.`;
             generateBtn.addEventListener("click", generate);
 
             el("editBtn").addEventListener("click", () => {
+                if (activeOutputTab === FLOW_TAB) return;
                 if (isEditing) {
                     const editedText = el("editArea").value;
                     if (activeOutputTab === "business_logic") {
@@ -1274,7 +1331,7 @@ Ask how much loan amount they are looking for.`;
 
             el("reviewBtn").addEventListener("click", async () => {
                 if (!lastResult) { showToast("Generate something first"); return; }
-                if (activeOutputTab === "business_logic") { showToast("Select a language tab to review"); return; }
+                if (activeOutputTab === "business_logic" || activeOutputTab === FLOW_TAB) { showToast("Select a language tab to review"); return; }
                 const businessLogic = lastResult.business_logic;
                 const languagePrompt = lastResult.language_prompts[activeOutputTab];
                 el("reviewBtn").disabled = true;
@@ -1298,6 +1355,25 @@ Ask how much loan amount they are looking for.`;
                 } finally {
                     el("reviewBtn").disabled = false;
                     el("reviewBtn").textContent = "🔍 Review";
+                    syncReviewBtnForFlowTab();
+                }
+            });
+
+            outputBody.addEventListener("click", (e) => {
+                if (!lastResult) return;
+                if (e.target.closest("#flowCopyBtn")) {
+                    navigator.clipboard.writeText(getActiveOutputText());
+                    showToast("Copied to clipboard");
+                } else if (e.target.closest("#flowDownloadBtn")) {
+                    const fc = lastResult.flow_check || {};
+                    if (fc.verdict === "FAIL") {
+                        const n = (fc.counts && fc.counts.CRITICAL) || 0;
+                        if (!confirm(`Integrity check failed with ${n} critical findings. Download anyway?`)) return;
+                    }
+                    const base = (uploadedFileName.replace(/\.[^.]*$/, "").replace(/[^\w.-]+/g, "_")) || "flow";
+                    downloadJson(lastResult.flow_json, `${base}_prompt_studio_output.json`);
+                } else if (e.target.closest("#flowReportBtn")) {
+                    downloadJson(lastResult.flow_check, "flow_integrity_report.json");
                 }
             });
 
@@ -1416,7 +1492,86 @@ Ask how much loan amount they are looking for.`;
         function getActiveOutputText() {
             if (!lastResult) return "";
             if (activeOutputTab === "business_logic") return lastResult.business_logic || "";
+            if (activeOutputTab === FLOW_TAB) return lastResult.flow_json ? JSON.stringify(lastResult.flow_json, null, 2) : "";
             return lastResult.language_prompts?.[activeOutputTab] || "";
+        }
+
+        // Disables Review on the FLOW tab, and re-enables it only if this function
+        // was what disabled it (never while a review request is still running).
+        function syncReviewBtnForFlowTab() {
+            const btn = el("reviewBtn");
+            if (activeOutputTab === FLOW_TAB) {
+                if (!btn.disabled) btn.dataset.flowDisabled = "1";
+                btn.disabled = true;
+            } else if (btn.dataset.flowDisabled) {
+                delete btn.dataset.flowDisabled;
+                btn.disabled = false;
+            }
+        }
+
+        function downloadJson(obj, filename) {
+            const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Integrity banner for flow-JSON inputs; returns "" for plain-text results.
+        function renderFlowCheckBanner() {
+            if (!("flow_check" in lastResult)) return "";
+            const fc = lastResult.flow_check || {};
+            const notes = lastResult.flow_field_notes || [];
+            const notesHtml = notes.length ? `
+          <details><summary>Field notes (${notes.length})</summary>
+            <ul>${notes.map(n => `<li><strong>${escapeHtml(n.label)}</strong>: ${escapeHtml(n.detail)}</li>`).join("")}</ul>
+          </details>` : "";
+
+            if (fc.error) {
+                return `
+        <div class="warning-banner flow-neutral">
+          <strong>Flow integrity check could not run</strong>
+          <div class="flow-check-meta">${escapeHtml(fc.error)}. The language prompts below are unaffected.</div>
+          ${notesHtml}
+        </div>`;
+            }
+
+            const style = { PASS: "flow-pass", PASS_WITH_WARNINGS: "", FAIL: "flow-fail" }[fc.verdict] ?? "";
+            const label = { PASS: "✅ PASS", PASS_WITH_WARNINGS: "⚠️ PASS WITH WARNINGS", FAIL: "❌ FAIL" }[fc.verdict] || escapeHtml(String(fc.verdict));
+            const c = fc.counts || {};
+            const findingRow = f => `<li><strong>${escapeHtml(f.title || f.category)}</strong>${f.expected ? " (expected)" : ""}${f.downgraded_from ? ` (re-labelled from ${f.downgraded_from})` : ""}: ${escapeHtml(f.message)}</li>`;
+            const groups = ["CRITICAL", "WARNING", "INFO"].map(sev => {
+                const items = (fc.findings || []).filter(f => f.severity === sev);
+                if (!items.length) return "";
+                return `<details ${sev === "CRITICAL" ? "open" : ""}><summary>${sev} (${items.length})</summary>
+            <ul>${items.map(findingRow).join("")}</ul></details>`;
+            }).join("");
+            const downgraded = (fc.downgraded || []).length ? `
+          <details><summary>Re-labelled CRITICAL → WARNING (${fc.downgraded.length}): check each removed figure was a language rule</summary>
+            <ul>${fc.downgraded.map(d => `<li><strong>${escapeHtml(d.path)}</strong>: ${escapeHtml(d.tokens.map(t => `${t.kind} ${t.token}`).join(", "))}
+              <ul>${d.tokens.flatMap(t => t.contexts).map(ctx => `<li>${escapeHtml(ctx)}</li>`).join("")}</ul></li>`).join("")}</ul>
+          </details>` : "";
+            const preexisting = (fc.preexisting_problems || []).length ? `
+          <details><summary>Problems already present in the input (${fc.preexisting_problems.length}, not counted)</summary>
+            <ul>${fc.preexisting_problems.map(findingRow).join("")}</ul>
+          </details>` : "";
+            const raw = fc.raw_verdict && fc.raw_verdict !== fc.verdict
+                ? ` · flow_guard's own verdict: <strong>${escapeHtml(fc.raw_verdict)}</strong>` : "";
+            const flowActions = activeOutputTab === FLOW_TAB && lastResult.flow_json ? `
+            <button class="btn btn-ghost" id="flowCopyBtn" style="padding:6px 10px;font-size:12px;">Copy flow</button>
+            <button class="btn btn-ghost" id="flowDownloadBtn" style="padding:6px 10px;font-size:12px;">Download flow</button>` : "";
+
+            return `
+        <div class="warning-banner ${style}">
+          <strong>Flow integrity: ${label}</strong>
+          <div class="flow-check-meta">${c.CRITICAL || 0} critical · ${c.WARNING || 0} warning · ${c.INFO || 0} info · topology equivalent: ${fc.topology_equivalent ? "yes" : "no"}${raw}</div>
+          ${groups}${downgraded}${preexisting}${notesHtml}
+          <div class="flow-check-actions">${flowActions}
+            <button class="btn btn-ghost" id="flowReportBtn" style="padding:6px 10px;font-size:12px;">Download report</button>
+          </div>
+        </div>`;
         }
 
         function renderOutput() {
@@ -1428,7 +1583,8 @@ Ask how much loan amount they are looking for.`;
                 ...langs.map(code => {
                     const lang = LANGUAGES.find(l => l.code === code);
                     return { id: code, label: code, glyph: lang ? lang.glyph : code };
-                })];
+                }),
+                ...(lastResult.flow_json ? [{ id: FLOW_TAB, label: "FLOW", glyph: "{}" }] : [])];
 
             const warnings = lastResult.warnings || {};
 
@@ -1466,14 +1622,18 @@ Ask how much loan amount they are looking for.`;
           <div style="margin-top:6px;white-space:pre-wrap;">${escapeHtml(reviewText)}</div>
         </div>` : "";
 
+            const flowBanner = renderFlowCheckBanner();
             if (isEditing) {
-                outputBody.innerHTML = `${banner}${reviewBanner}<textarea class="input-area" id="editArea" style="min-height:400px;">${escapeHtml(text)}</textarea>`;
+                outputBody.innerHTML = `${flowBanner}${banner}${reviewBanner}<textarea class="input-area" id="editArea" style="min-height:400px;">${escapeHtml(text)}</textarea>`;
             } else {
-                outputBody.innerHTML = `${banner}${reviewBanner}<div class="output-content">${escapeHtml(text)}</div>`;
+                outputBody.innerHTML = `${flowBanner}${banner}${reviewBanner}<div class="output-content">${escapeHtml(text)}</div>`;
             }
 
             const editBtn = el("editBtn");
             editBtn.textContent = isEditing ? "💾 Save" : "✏️ Edit";
+            // The output flow is read-only, and review only applies to language prompts.
+            editBtn.disabled = activeOutputTab === FLOW_TAB;
+            syncReviewBtnForFlowTab();
         }
 
         function escapeHtml(str) {
