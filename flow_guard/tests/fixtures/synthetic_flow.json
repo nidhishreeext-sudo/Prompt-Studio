@@ -1,0 +1,295 @@
+{
+  "version": "1.0",
+  "type": "guided_conversation_flow",
+  "exportedAt": "2026-10-01T09:30:00.000Z",
+  "data": {
+    "conversationNodes": {
+      "startNodeId": "node-route",
+      "nodes": [
+        {
+          "id": "node-route",
+          "name": "Route by Lead Type",
+          "type": "switch",
+          "globalNode": {"enabled": false},
+          "overlays": {},
+          "onEnterSay": {"message": ""},
+          "edges": [
+            {
+              "id": "edge-route-fresh",
+              "destinationNodeId": "node-greet",
+              "transitionCondition": {"type": "prompt", "prompt": ""},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-route-returning",
+              "destinationNodeId": "node-followup",
+              "transitionCondition": {"type": "prompt", "prompt": ""},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-route-default",
+              "destinationNodeId": "node-greet",
+              "transitionCondition": {"type": "prompt", "prompt": ""},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            }
+          ],
+          "position": {"x": 0, "y": 0},
+          "instruction": "",
+          "variables": [],
+          "tts": {},
+          "stt": {},
+          "callSettings": {},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": [],
+          "switchExpression": "{{lead_type}}",
+          "switchDefaultEdgeId": "edge-route-default",
+          "switchCases": {
+            "FRESH_LEAD": "edge-route-fresh",
+            "RETURNING_DEVOTEE": "edge-route-returning"
+          }
+        },
+        {
+          "id": "node-greet",
+          "name": "Greeting",
+          "type": "conversation",
+          "globalNode": {"enabled": false},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "नमस्ते {{devotee_name}} जी, मैं श्री वेंकटेश्वर मंदिर से आपकी पूजा बुकिंग में मदद के लिए कॉल कर रही हूँ।"}},
+            "lang:te-IN": {"onEnterSay": {"message": "నమస్తే {{devotee_name}} గారు, శ్రీ వేంకటేశ్వర ఆలయం నుండి మీ పూజ బుకింగ్ గురించి సహాయం చేయడానికి కాల్ చేస్తున్నాను."}},
+            "lang:kn-IN": {"onEnterSay": {"message": "ನಮಸ್ಕಾರ {{devotee_name}} ಅವರೇ, ಶ್ರೀ ವೆಂಕಟೇಶ್ವರ ದೇವಸ್ಥಾನದಿಂದ ಪೂಜೆ ಬುಕಿಂಗ್ ಬಗ್ಗೆ ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ."}},
+            "lang:ta-IN": {"onEnterSay": {"message": "வணக்கம் {{devotee_name}}, ஸ்ரீ வெங்கடேஸ்வரா கோயிலில் இருந்து பூஜை முன்பதிவு பற்றி அழைக்கிறேன்."}},
+            "lang:mr-IN": {"onEnterSay": {"message": "नमस्कार {{devotee_name}} जी, श्री वेंकटेश्वर मंदिरातून पूजा बुकिंगबद्दल मी फोन करत आहे."}}
+          },
+          "onEnterSay": {"message": "Namaste {{devotee_name}} ji, I am calling from Sri Venkateswara Temple to help you with your pooja booking."},
+          "edges": [
+            {
+              "id": "edge-greet-interested",
+              "destinationNodeId": "node-pooja",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee shows interest in booking a pooja or asks about pooja options."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-greet-decline",
+              "destinationNodeId": "node-end-decline",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee says they are not interested or asks not to be called again."},
+              "transitionMessage": "Thank you for your time, \\[\\[devotee_name]] ji.",
+              "overlays": {
+                "lang:hi-IN": {"transitionMessage": "आपके समय के लिए धन्यवाद, \\[\\[devotee_name]] जी।"},
+                "lang:te-IN": {"transitionMessage": "మీ సమయానికి ధన్యవాదాలు, \\[\\[devotee_name]] గారు."}
+              },
+              "translationReviews": {"lang:hi-IN": {"status": "approved"}},
+              "goBackToPrevious": false
+            }
+          ],
+          "position": {"x": 320, "y": -120},
+          "instruction": "You are Lakshmi, a polite booking assistant for Sri Venkateswara Temple. Greet \\[\\[devotee_name]] warmly and ask if they would like to book a pooja this month. Speak in short sentences. Never mention the donation amount unless the devotee asks. If the devotee is busy, give exactly one nudge and then respect their decision.",
+          "variables": [
+            {"name": "interest_level", "type": "string", "description": "How interested the devotee sounded: high, medium or low."}
+          ],
+          "tts": {"voice": "lakshmi-v2", "speed": 1.0},
+          "stt": {"language": "auto"},
+          "callSettings": {"maxDurationSeconds": 300},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": []
+        },
+        {
+          "id": "node-followup",
+          "name": "Follow-up Reminder",
+          "type": "conversation",
+          "globalNode": {"enabled": false},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "नमस्ते {{devotee_name}} जी, पिछली बार आपने पूजा बुकिंग में रुचि दिखाई थी।"}},
+            "lang:te-IN": {"onEnterSay": {"message": "నమస్తే {{devotee_name}} గారు, గతసారి మీరు పూజ బుకింగ్‌పై ఆసక్తి చూపించారు."}}
+          },
+          "onEnterSay": {"message": "Namaste {{devotee_name}} ji, last time you showed interest in a pooja booking."},
+          "edges": [
+            {
+              "id": "edge-followup-continue",
+              "destinationNodeId": "node-pooja",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee agrees to continue with the booking."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-followup-decline",
+              "destinationNodeId": "node-end-decline",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee declines or says they already booked elsewhere."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-followup-later",
+              "destinationNodeId": "node-callback",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee asks to be called back at another time."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            }
+          ],
+          "position": {"x": 320, "y": 160},
+          "instruction": "Remind \\[\\[devotee_name]] about the pooja they were interested in. Ask whether they want to complete the booking today. If they hesitate, give exactly one nudge about the auspicious date and then stop. Do not repeat the offer more than once.",
+          "variables": [],
+          "tts": {"voice": "lakshmi-v2", "speed": 1.0},
+          "stt": {"language": "auto"},
+          "callSettings": {"maxDurationSeconds": 300},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": []
+        },
+        {
+          "id": "node-pooja",
+          "name": "Pooja Details and Payment",
+          "type": "conversation",
+          "globalNode": {"enabled": false},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "बहुत अच्छा! अभिषेकम पूजा की दक्षिणा ₹1,100 है।"}},
+            "lang:te-IN": {"onEnterSay": {"message": "చాలా మంచిది! అభిషేకం పూజ దక్షిణ ₹1,100."}}
+          },
+          "onEnterSay": {"message": "Wonderful! The Abhishekam pooja dakshina is ₹1,100."},
+          "edges": [
+            {
+              "id": "edge-pooja-confirmed",
+              "destinationNodeId": "node-end-success",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee confirms the booking and agrees to pay."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            },
+            {
+              "id": "edge-pooja-refuse",
+              "destinationNodeId": "node-end-decline",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee refuses to pay or cancels the booking."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            }
+          ],
+          "position": {"x": 640, "y": 0},
+          "instruction": "Explain the Abhishekam pooja: it is performed on Saturday at 6 AM and the dakshina is Rs 1,100. Collect the gotra and the names for the sankalpam. Send the payment link https://example-temple.org/pay/{{booking_id}} by SMS. Never read the payment link aloud.",
+          "variables": [
+            {"name": "gotra", "type": "string", "description": "The devotee's gotra for the sankalpam."}
+          ],
+          "tts": {"voice": "lakshmi-v2", "speed": 1.0},
+          "stt": {"language": "auto"},
+          "callSettings": {"maxDurationSeconds": 420},
+          "allowGoBack": true,
+          "goBackEdges": [],
+          "jumpToEdges": []
+        },
+        {
+          "id": "node-callback",
+          "name": "Schedule Callback",
+          "type": "conversation",
+          "globalNode": {"enabled": true},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "ज़रूर, मैं आपको सुबह 10 AM से शाम 7 PM के बीच कॉल कर सकती हूँ।"}}
+          },
+          "onEnterSay": {"message": "Sure, I can call you back any time between 10 AM and 7 PM."},
+          "edges": [
+            {
+              "id": "edge-callback-set",
+              "destinationNodeId": "node-end-success",
+              "transitionCondition": {"type": "prompt", "prompt": "A callback date and time has been agreed."},
+              "transitionMessage": "",
+              "overlays": {},
+              "translationReviews": {},
+              "goBackToPrevious": false
+            }
+          ],
+          "position": {"x": 640, "y": 260},
+          "instruction": "Ask the devotee for a convenient date and time for a callback. Only offer slots between 10 AM and 7 PM. Confirm the slot back to them once.",
+          "variables": [
+            {"name": "callback_time", "type": "string", "description": "The agreed callback date and time."}
+          ],
+          "tts": {"voice": "lakshmi-v2", "speed": 1.0},
+          "stt": {"language": "auto"},
+          "callSettings": {"maxDurationSeconds": 300},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": [
+            {
+              "id": "jump-callback",
+              "transitionCondition": {"type": "prompt", "prompt": "The devotee asks to be called back later."}
+            }
+          ]
+        },
+        {
+          "id": "node-end-success",
+          "name": "Booking Confirmed",
+          "type": "end",
+          "globalNode": {"enabled": false},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "धन्यवाद {{devotee_name}} जी! भगवान आपको आशीर्वाद दें।"}}
+          },
+          "onEnterSay": {"message": "Thank you {{devotee_name}} ji! May the Lord bless you."},
+          "edges": [],
+          "position": {"x": 960, "y": 0},
+          "instruction": "",
+          "variables": [],
+          "tts": {},
+          "stt": {},
+          "callSettings": {},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": []
+        },
+        {
+          "id": "node-end-decline",
+          "name": "Polite Close",
+          "type": "end",
+          "globalNode": {"enabled": false},
+          "overlays": {
+            "lang:hi-IN": {"onEnterSay": {"message": "कोई बात नहीं, आपका दिन शुभ हो।"}}
+          },
+          "onEnterSay": {"message": "No problem at all. Have a blessed day."},
+          "edges": [],
+          "position": {"x": 960, "y": 260},
+          "instruction": "",
+          "variables": [],
+          "tts": {},
+          "stt": {},
+          "callSettings": {},
+          "allowGoBack": false,
+          "goBackEdges": [],
+          "jumpToEdges": []
+        }
+      ],
+      "emitNodeChangeEvents": true,
+      "startNodePosition": {"x": -200, "y": 0},
+      "globalVariables": [
+        {"name": "devotee_name", "type": "string", "description": "The devotee's name as stored in the CRM."},
+        {"name": "lead_type", "type": "string", "description": "FRESH_LEAD or RETURNING_DEVOTEE."},
+        {"name": "booking_id", "type": "string", "description": "Booking reference used in the payment link."}
+      ]
+    },
+    "prompt": "You are Lakshmi, the voice booking assistant of Sri Venkateswara Temple. Calls happen only between 10 AM and 7 PM. The standard donation is ₹501 and the Abhishekam dakshina is Rs 1,100. Always address the devotee as {{devotee_name}} ji. Never promise prasadam delivery. Details: https://example-temple.org/seva",
+    "initialMessage": "Namaste {{devotee_name}} ji!",
+    "prompts": {
+      "default": "Speak warmly and respectfully. Keep every reply under two sentences.",
+      "lang:te-IN": "మర్యాదగా, ఆప్యాయంగా మాట్లాడండి. ప్రతి సమాధానం రెండు వాక్యాలలోపు ఉండాలి.",
+      "lang:hi-IN": "गर्मजोशी और सम्मान के साथ बात करें। हर जवाब दो वाक्यों से कम रखें।"
+    },
+    "supportedModes": ["voice", "chat"]
+  }
+}
