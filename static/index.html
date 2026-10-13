@@ -502,6 +502,53 @@
             flex: 1;
         }
 
+        .output-format-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 16px 0 0;
+        }
+
+        .output-format-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .segmented {
+            display: inline-flex;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+            .segmented button {
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                font-size: 12.5px;
+                font-weight: 500;
+                font-family: inherit;
+                padding: 7px 12px;
+                cursor: pointer;
+            }
+
+                .segmented button + button {
+                    border-left: 1px solid var(--border-strong);
+                }
+
+                .segmented button.active {
+                    background: var(--accent-soft);
+                    color: var(--accent);
+                }
+
+        .output-format-help {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
         .status-pill {
             display: flex;
             align-items: center;
@@ -940,6 +987,16 @@
             </div>
         </div>
 
+        <!-- Output format: shown only when the input is a flow JSON -->
+        <div class="output-format-row" id="outputFormatRow" style="display:none;">
+            <span class="output-format-label">Output format</span>
+            <div class="segmented" id="outputFormatControl">
+                <button type="button" data-format="prompt">Single prompt</button>
+                <button type="button" data-format="flow_json">Flow JSON</button>
+            </div>
+            <span class="output-format-help">Single prompt: one prompt per language. Flow JSON: your flow with every language added inside it, checked against your original. Applies to the next Generate.</span>
+        </div>
+
         <!-- Toolbar -->
         <div class="toolbar">
             <div class="lang-dropdown-wrap">
@@ -1065,6 +1122,15 @@
         // Name of the uploaded input file, used for the output flow's download name.
         let uploadedFileName = "";
         const FLOW_TAB = "__flow__";
+        // Output format for flow-JSON input ("prompt" or "flow_json"), remembered
+        // per session like the name field. The control only shows for flow input.
+        const OUTPUT_FORMATS = ["prompt", "flow_json"];
+        let outputFormat = OUTPUT_FORMATS.includes(sessionStorage.getItem("promptStudioOutputFormat"))
+            ? sessionStorage.getItem("promptStudioOutputFormat") : "flow_json";
+        let inputIsFlow = false;
+        let flowCheckTimer = null;
+        // Language prompts exactly as generated, to detect edits made after the integrity check.
+        let generatedPrompts = {};
 
         const SAMPLE_PROMPT = `You are Sona, a sales representative from Muthoot Finance Gold Loan team.
 Refer to yourself only in feminine Hindi verb forms (for example मैं बोल रही हूँ).
@@ -1216,7 +1282,17 @@ Ask how much loan amount they are looking for.`;
 
             inputArea.addEventListener("input", () => {
                 inputCharCount.textContent = `${inputArea.value.length} chars`;
+                scheduleFlowCheck();
             });
+
+            el("outputFormatControl").querySelectorAll("button").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    outputFormat = btn.dataset.format;
+                    sessionStorage.setItem("promptStudioOutputFormat", outputFormat);
+                    renderOutputFormatControl();
+                });
+            });
+            renderOutputFormatControl();
 
             el("userNameInput").addEventListener("input", (e) => {
                 sessionUserName = e.target.value;
@@ -1244,6 +1320,7 @@ Ask how much loan amount they are looking for.`;
             el("loadSampleBtn").addEventListener("click", () => {
                 inputArea.value = SAMPLE_PROMPT;
                 inputCharCount.textContent = `${inputArea.value.length} chars`;
+                updateFlowInputState();
             });
 
             el("uploadBtn").addEventListener("click", () => el("fileInput").click());
@@ -1255,6 +1332,7 @@ Ask how much loan amount they are looking for.`;
                 reader.onload = (ev) => {
                     inputArea.value = ev.target.result;
                     inputCharCount.textContent = `${inputArea.value.length} chars`;
+                    updateFlowInputState();
                 };
                 reader.readAsText(file);
             });
@@ -1264,6 +1342,8 @@ Ask how much loan amount they are looking for.`;
                 inputCharCount.textContent = "0 chars";
                 uploadedFileName = "";
                 lastResult = null;
+                generatedPrompts = {};
+                updateFlowInputState();
                 closeFeedbackPanel();
                 renderEmptyOutput();
             });
@@ -1301,7 +1381,9 @@ Ask how much loan amount they are looking for.`;
 
             el("downloadBtn").addEventListener("click", () => {
                 if (!lastResult) { showToast("Nothing to download yet"); return; }
-                const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
+                // The flow inside the result must carry the current (possibly edited) language text.
+                const dump = lastResult.flow_json ? { ...lastResult, flow_json: currentFlowJson() } : lastResult;
+                const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -1371,7 +1453,7 @@ Ask how much loan amount they are looking for.`;
                         if (!confirm(`Integrity check failed with ${n} critical findings. Download anyway?`)) return;
                     }
                     const base = (uploadedFileName.replace(/\.[^.]*$/, "").replace(/[^\w.-]+/g, "_")) || "flow";
-                    downloadJson(lastResult.flow_json, `${base}_prompt_studio_output.json`);
+                    downloadJson(currentFlowJson(), `${base}_prompt_studio_output.json`);
                 } else if (e.target.closest("#flowReportBtn")) {
                     downloadJson(lastResult.flow_check, "flow_integrity_report.json");
                 }
@@ -1492,7 +1574,7 @@ Ask how much loan amount they are looking for.`;
         function getActiveOutputText() {
             if (!lastResult) return "";
             if (activeOutputTab === "business_logic") return lastResult.business_logic || "";
-            if (activeOutputTab === FLOW_TAB) return lastResult.flow_json ? JSON.stringify(lastResult.flow_json, null, 2) : "";
+            if (activeOutputTab === FLOW_TAB) return lastResult.flow_json ? JSON.stringify(currentFlowJson(), null, 2) : "";
             return lastResult.language_prompts?.[activeOutputTab] || "";
         }
 
@@ -1507,6 +1589,55 @@ Ask how much loan amount they are looking for.`;
                 delete btn.dataset.flowDisabled;
                 btn.disabled = false;
             }
+        }
+
+        // Mirrors main.is_flow_json: a JSON object whose "data" is an object that
+        // contains "conversationNodes". Only parses text that starts with "{",
+        // since real flows can be hundreds of KB.
+        function looksLikeFlowJson(text) {
+            const t = text.trim();
+            if (!t.startsWith("{")) return false;
+            let parsed;
+            try { parsed = JSON.parse(t); } catch (e) { return false; }
+            const isObject = v => v !== null && typeof v === "object" && !Array.isArray(v);
+            return isObject(parsed) && isObject(parsed.data) && "conversationNodes" in parsed.data;
+        }
+
+        function scheduleFlowCheck() {
+            clearTimeout(flowCheckTimer);
+            flowCheckTimer = setTimeout(updateFlowInputState, 300);
+        }
+
+        function updateFlowInputState() {
+            clearTimeout(flowCheckTimer);
+            inputIsFlow = looksLikeFlowJson(inputArea.value);
+            el("outputFormatRow").style.display = inputIsFlow ? "flex" : "none";
+        }
+
+        function renderOutputFormatControl() {
+            el("outputFormatControl").querySelectorAll("button").forEach(btn => {
+                btn.classList.toggle("active", btn.dataset.format === outputFormat);
+            });
+        }
+
+        // The output flow as it should be downloaded or copied now: a deep copy of
+        // the generated flow with each attached language's CURRENT tab text, so an
+        // edit or an applied review fix always reaches the file. Keys come from the
+        // server (flow_language_keys), never from the client.
+        function currentFlowJson() {
+            if (!lastResult || !lastResult.flow_json) return null;
+            const flow = JSON.parse(JSON.stringify(lastResult.flow_json));
+            const keys = lastResult.flow_language_keys || {};
+            Object.entries(keys).forEach(([lang, key]) => {
+                const text = lastResult.language_prompts?.[lang];
+                if (typeof text === "string" && flow.data && flow.data.prompts) flow.data.prompts[key] = text;
+            });
+            return flow;
+        }
+
+        function attachedLanguagesEdited() {
+            const keys = lastResult.flow_language_keys || {};
+            return Object.keys(keys).some(lang => lastResult.language_prompts?.[lang] !== generatedPrompts[lang]);
         }
 
         function downloadJson(obj, filename) {
@@ -1528,13 +1659,23 @@ Ask how much loan amount they are looking for.`;
           <details><summary>Field notes (${notes.length})</summary>
             <ul>${notes.map(n => `<li><strong>${escapeHtml(n.label)}</strong>: ${escapeHtml(n.detail)}</li>`).join("")}</ul>
           </details>` : "";
+            const langs = fc.languages;
+            const languagesHtml = langs ? `
+          <div class="flow-check-meta">Languages in file: ${escapeHtml(langs.attached.join(", ") || "none")}.${langs.missing.length
+                ? ` Missing: ${escapeHtml(langs.missing.map(m => `${m.language} (${m.reason})`).join(", "))}.` : ""}</div>` : "";
+            const editedHtml = lastResult.flow_json && attachedLanguagesEdited() ? `
+          <div class="flow-check-meta"><em>Language text was edited after the integrity check. The structure check covers the generated version.</em></div>` : "";
+            const flowActions = activeOutputTab === FLOW_TAB && lastResult.flow_json ? `
+            <button class="btn btn-ghost" id="flowCopyBtn" style="padding:6px 10px;font-size:12px;">Copy flow</button>
+            <button class="btn btn-ghost" id="flowDownloadBtn" style="padding:6px 10px;font-size:12px;">Download flow</button>` : "";
 
             if (fc.error) {
                 return `
         <div class="warning-banner flow-neutral">
           <strong>Flow integrity check could not run</strong>
           <div class="flow-check-meta">${escapeHtml(fc.error)}. The language prompts below are unaffected.</div>
-          ${notesHtml}
+          ${languagesHtml}${editedHtml}${notesHtml}
+          ${flowActions ? `<div class="flow-check-actions">${flowActions}</div>` : ""}
         </div>`;
             }
 
@@ -1559,14 +1700,12 @@ Ask how much loan amount they are looking for.`;
           </details>` : "";
             const raw = fc.raw_verdict && fc.raw_verdict !== fc.verdict
                 ? ` · flow_guard's own verdict: <strong>${escapeHtml(fc.raw_verdict)}</strong>` : "";
-            const flowActions = activeOutputTab === FLOW_TAB && lastResult.flow_json ? `
-            <button class="btn btn-ghost" id="flowCopyBtn" style="padding:6px 10px;font-size:12px;">Copy flow</button>
-            <button class="btn btn-ghost" id="flowDownloadBtn" style="padding:6px 10px;font-size:12px;">Download flow</button>` : "";
 
             return `
         <div class="warning-banner ${style}">
           <strong>Flow integrity: ${label}</strong>
           <div class="flow-check-meta">${c.CRITICAL || 0} critical · ${c.WARNING || 0} warning · ${c.INFO || 0} info · topology equivalent: ${fc.topology_equivalent ? "yes" : "no"}${raw}</div>
+          ${languagesHtml}${editedHtml}
           ${groups}${downgraded}${preexisting}${notesHtml}
           <div class="flow-check-actions">${flowActions}
             <button class="btn btn-ghost" id="flowReportBtn" style="padding:6px 10px;font-size:12px;">Download report</button>
@@ -1657,25 +1796,33 @@ Ask how much loan amount they are looking for.`;
             setStatus("generating", "Generating…");
             closeFeedbackPanel(); // any open feedback form referred to the previous generation_id
 
+            // Settle a pending debounced check so the payload matches what the control shows.
+            updateFlowInputState();
+            const payload = {
+                raw_prompt: raw,
+                mode: currentMode,
+                languages: Array.from(selectedLanguages),
+                model: currentModel,
+                user_name: sessionUserName.trim(),
+                custom_instruction: customInstruction,
+            };
+            if (inputIsFlow) payload.output_format = outputFormat;
+
             try {
                 const res = await fetch("/api/generate", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        raw_prompt: raw,
-                        mode: currentMode,
-                        languages: Array.from(selectedLanguages),
-                        model: currentModel,
-                        user_name: sessionUserName.trim(),
-                        custom_instruction: customInstruction,
-                    })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "Generation failed");
 
                 lastResult = data;
                 lastResult.mode = currentMode;
-                activeOutputTab = currentMode === "extract" ? "business_logic" : Array.from(selectedLanguages)[0];
+                generatedPrompts = { ...(data.language_prompts || {}) };
+                // In Flow JSON mode the flow is the deliverable, so it opens first.
+                activeOutputTab = data.flow_json ? FLOW_TAB
+                    : currentMode === "extract" ? "business_logic" : Array.from(selectedLanguages)[0];
                 renderOutput();
                 setStatus("done", "Done");
             } catch (err) {

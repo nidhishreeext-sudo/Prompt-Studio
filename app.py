@@ -22,6 +22,8 @@ from main import (
 from flow_output import distill_flow, build_output_flow
 from flow_check import run_flow_check
 
+OUTPUT_FORMATS = ("prompt", "flow_json")
+
 app = Flask(__name__, static_folder="static")
 db.init_db()
 
@@ -83,6 +85,13 @@ def generate():
     # meant to apply across the board rather than to one specific language.
     flow_json = is_flow_json(raw_prompt)
     custom_notes_by_language = {}
+
+    # Flow-JSON input only: "flow_json" (the default) also returns the output flow
+    # and its integrity check; "prompt" returns only the per-language prompts.
+    # Ignored for plain-text input, which has no flow to return.
+    output_format = data.get("output_format", "flow_json")
+    if flow_json and output_format not in OUTPUT_FORMATS:
+        return jsonify({"error": f"Unknown output_format '{output_format}' (use one of: {', '.join(OUTPUT_FORMATS)})"}), 400
 
     if flow_json:
         per_language_instructions = extract_per_language_node_instructions(flow_json)
@@ -168,12 +177,12 @@ def generate():
     }
     if scope_warning:
         response["scope_warning"] = scope_warning
-    if flow_json:
-        response.update(_flow_outputs(flow_json, flow_distillation, result["prompts"]))
+    if flow_json and output_format == "flow_json":
+        response.update(_flow_outputs(flow_json, flow_distillation, result["prompts"], languages))
     return jsonify(response)
 
 
-def _flow_outputs(flow_json, flow_distillation, language_prompts):
+def _flow_outputs(flow_json, flow_distillation, language_prompts, languages):
     """The output flow plus its integrity check, for flow-JSON inputs only.
     Same principle as DB logging: a failure here never fails the generation,
     the language prompts above are returned regardless."""
@@ -183,10 +192,13 @@ def _flow_outputs(flow_json, flow_distillation, language_prompts):
     except Exception as e:
         traceback.print_exc()
         return {"flow_json": None, "flow_check": {"error": f"Could not build the output flow: {e}"},
-                "flow_field_notes": notes}
+                "flow_field_notes": notes, "flow_language_keys": {}}
     flow_check = run_flow_check(flow_json, output.flow, rewritten_paths=output.rewritten_paths,
                                 attached_keys=output.attached_keys, created_prompts=output.created_prompts)
-    return {"flow_json": output.flow, "flow_check": flow_check, "flow_field_notes": notes + output.notes}
+    # Deterministic, so it is reported even when the guard itself could not run.
+    flow_check["languages"] = output.language_summary(languages)
+    return {"flow_json": output.flow, "flow_check": flow_check, "flow_field_notes": notes + output.notes,
+            "flow_language_keys": output.language_keys}
 
 
 @app.route("/api/comment", methods=["POST"])

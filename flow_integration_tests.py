@@ -90,7 +90,7 @@ class FakeGemini:
         return FakeResponse("### Colloquial Speech\nSpeak naturally and warmly, confirming the booking details.")
 
 
-def post(raw_prompt: str, mode: str, languages=("Kannada", "Tamil"), fake=None):
+def post(raw_prompt: str, mode: str, languages=("Kannada", "Tamil"), fake=None, extra=None):
     fake = fake or FakeGemini()
     original = main.client.models.generate_content
     main.client.models.generate_content = fake
@@ -98,7 +98,7 @@ def post(raw_prompt: str, mode: str, languages=("Kannada", "Tamil"), fake=None):
         client = flask_app_module.app.test_client()
         resp = client.post("/api/generate", json={
             "raw_prompt": raw_prompt, "mode": mode, "languages": list(languages),
-            "model": main.DEFAULT_MODEL, "user_name": "flow-integration-suite",
+            "model": main.DEFAULT_MODEL, "user_name": "flow-integration-suite", **(extra or {}),
         })
         return resp, resp.get_json(), fake
     finally:
@@ -442,6 +442,145 @@ def test_flow_guard_pytest():
                  detail=tail)
 
 
+FLOW_KEYS = ("flow_json", "flow_check", "flow_field_notes", "flow_language_keys")
+PLAIN_KEYS = {"business_logic", "language_prompts", "warnings", "model", "generation_id"}
+TIME_RULE = "When you say a time, say 10:30 AM as 'saadhe das baje'. "
+
+
+def time_rule_flow() -> dict:
+    fx = load_fixture()
+    greet = node(fx, "node-greet")
+    greet["instruction"] = greet["instruction"].replace("Speak in short sentences. ", "Speak in short sentences. " + TIME_RULE)
+    return fx
+
+
+class CountingCompare:
+    def __init__(self):
+        self.calls = 0
+        self.original = flow_guard.compare
+
+    def __call__(self, *args, **kwargs):
+        self.calls += 1
+        return self.original(*args, **kwargs)
+
+    def __enter__(self):
+        flow_guard.compare = self
+        return self
+
+    def __exit__(self, *exc):
+        flow_guard.compare = self.original
+
+
+def test_output_format_prompt():
+    print("\n--- 12. output_format=\"prompt\": prompts only, same text as flow_json mode ---")
+    ok = True
+    for mode in ("extract", "scoped"):
+        with CountingCompare() as counter:
+            resp_p, prompt_run, _ = post_flow(time_rule_flow(), mode, fake=FakeGemini(strip_sentence(TIME_RULE)),
+                                              extra={"output_format": "prompt"})
+        ok &= check(f"{mode}: request succeeded", resp_p.status_code == 200, detail=str(prompt_run)[:300])
+        ok &= check(f"{mode}: no flow keys at all (absent, not null)", not any(k in prompt_run for k in FLOW_KEYS),
+                    detail=str(sorted(prompt_run)))
+        ok &= check(f"{mode}: response keys are exactly the plain ones", set(prompt_run) == PLAIN_KEYS, detail=str(sorted(prompt_run)))
+        ok &= check(f"{mode}: flow_guard compare never called", counter.calls == 0, detail=str(counter.calls))
+        with CountingCompare() as counter:
+            _, flow_run, _ = post_flow(time_rule_flow(), mode, fake=FakeGemini(strip_sentence(TIME_RULE)),
+                                       extra={"output_format": "flow_json"})
+        ok &= check(f"{mode}: flow_json mode does call compare (sanity)", counter.calls == 1, detail=str(counter.calls))
+        ok &= check(f"{mode}: business_logic byte-identical in both modes",
+                    prompt_run["business_logic"] == flow_run["business_logic"])
+        ok &= check(f"{mode}: every language prompt byte-identical in both modes",
+                    prompt_run["language_prompts"] == flow_run["language_prompts"] and set(prompt_run["language_prompts"]) == {"KN", "TA"})
+        ok &= check(f"{mode}: warnings identical in both modes", prompt_run["warnings"] == flow_run["warnings"])
+    return ok
+
+
+def test_output_format_default():
+    print("\n--- 13. output_format=\"flow_json\" and a missing output_format give today's response ---")
+    _, explicit, _ = post_flow(time_rule_flow(), "extract", fake=FakeGemini(strip_sentence(TIME_RULE)),
+                               extra={"output_format": "flow_json"})
+    _, default, _ = post_flow(time_rule_flow(), "extract", fake=FakeGemini(strip_sentence(TIME_RULE)))
+    ok = check("explicit flow_json and missing output_format are identical", explicit == default)
+    ok &= check("response keys are today's plus flow_language_keys",
+                set(default) == PLAIN_KEYS | set(FLOW_KEYS), detail=str(sorted(default)))
+    fc = default["flow_check"]
+    ok &= check("flow_check keeps every existing key, adds only 'languages'",
+                set(fc) == {"verdict", "raw_verdict", "counts", "raw_counts", "topology_equivalent", "findings",
+                            "preexisting_problems", "downgraded", "judge", "raw_report", "languages"}, detail=str(sorted(fc)))
+    ok &= check("verdicts unchanged from the existing behavior", fc["verdict"] == "PASS_WITH_WARNINGS" and fc["raw_verdict"] == "FAIL")
+    ok &= check("language summary: all requested languages attached",
+                fc["languages"] == {"requested": ["KN", "TA"], "attached": ["KN", "TA"], "missing": []}, detail=str(fc["languages"]))
+    return ok
+
+
+def test_output_format_invalid():
+    print("\n--- 14. An invalid output_format is rejected ---")
+    resp, data, fake = post_flow(load_fixture(), "extract", extra={"output_format": "pdf"})
+    ok = check("returns 400", resp.status_code == 400, detail=str(resp.status_code))
+    ok &= check("clear message naming the field and the valid values",
+                data.get("error") == "Unknown output_format 'pdf' (use one of: prompt, flow_json)", detail=str(data))
+    ok &= check("rejected before any Gemini call", fake.total_calls == 0, detail=str(fake.total_calls))
+    return ok
+
+
+def test_output_format_plain_text():
+    print("\n--- 15. Plain-text input ignores output_format ---")
+    text = "You are a booking assistant. Collect the caller's name and confirm the slot."
+    _, baseline, _ = post(text, "extract")
+    ok = True
+    for value in ("flow_json", "prompt", "pdf"):
+        resp, data, _ = post(text, "extract", extra={"output_format": value})
+        ok &= check(f"output_format={value!r}: 200 and the same response as without it",
+                    resp.status_code == 200 and data == baseline, detail=str(data)[:300])
+    ok &= check("no flow keys in the plain-text response", set(baseline) == PLAIN_KEYS, detail=str(sorted(baseline)))
+    return ok
+
+
+def test_failed_language_reported():
+    print("\n--- 16. A language that ends in an error state is reported missing ---")
+    original = main._generate_one_language
+
+    def fail_kannada(*args):
+        if args[1] == "KN":
+            return "KN", flow_output.GENERATION_FAILED_PREFIX + " KN.\n\nEvery generation attempt failed.", [
+                "Generation failed for 'KN': output remained in the wrong language."]
+        return original(*args)
+    main._generate_one_language = fail_kannada
+    try:
+        resp, data, _ = post_flow(load_fixture(), "extract")
+    finally:
+        main._generate_one_language = original
+    ok = check("request succeeded", resp.status_code == 200, detail=str(data)[:300])
+    if not ok:
+        return ok
+    langs = data["flow_check"]["languages"]
+    ok &= check("summary lists KN as missing because generation failed",
+                langs == {"requested": ["KN", "TA"], "attached": ["TA"],
+                          "missing": [{"language": "KN", "reason": "generation failed"}]}, detail=str(langs))
+    ok &= check("KN overlay is not in the flow", "lang:kn-IN" not in data["flow_json"]["data"]["prompts"])
+    ok &= check("KN is not in flow_language_keys", data["flow_language_keys"] == {"TA": "lang:ta-IN"},
+                detail=str(data["flow_language_keys"]))
+    return ok
+
+
+def test_flow_language_keys():
+    print("\n--- 17. flow_language_keys matches the overlay keys in the flow ---")
+    fx = load_fixture()
+    resp, data, _ = post_flow(fx, "extract", languages=("Kannada", "Tamil", "English", "Hindi"))
+    ok = check("request succeeded", resp.status_code == 200, detail=str(data)[:300])
+    if not ok:
+        return ok
+    keys, prompts = data["flow_language_keys"], data["flow_json"]["data"]["prompts"]
+    ok &= check("each key comes from language_prompt_key()",
+                keys == {lang: flow_output.language_prompt_key(lang) for lang in ("KN", "TA", "EN", "HI")}, detail=str(keys))
+    ok &= check("every mapped key is present in data.prompts with that language's text",
+                all(prompts.get(key) == data["language_prompts"][lang] for lang, key in keys.items()))
+    new_keys = set(prompts) - set(fx["data"]["prompts"])
+    ok &= check("keys added to data.prompts are exactly the mapped ones (lang:hi-IN already existed and was replaced)",
+                new_keys | {"lang:hi-IN"} == set(keys.values()), detail=str(sorted(new_keys)))
+    return ok
+
+
 def test_call_count():
     print("\n--- Gemini extract calls for the sample flow ---")
     fake = FakeGemini()
@@ -471,6 +610,12 @@ def main_entry():
         test_clean_install(skip_install),
         test_flow_guard_pytest(),
         test_call_count(),
+        test_output_format_prompt(),
+        test_output_format_default(),
+        test_output_format_invalid(),
+        test_output_format_plain_text(),
+        test_failed_language_reported(),
+        test_flow_language_keys(),
     ]
     print("\n" + "=" * 60)
     if FAILURES:

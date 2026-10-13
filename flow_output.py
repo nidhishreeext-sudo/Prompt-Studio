@@ -83,6 +83,15 @@ class OutputFlow:
     attached_keys: list        # data.prompts keys Prompt Studio added or replaced
     created_prompts: bool      # True when the input had no data.prompts at all
     notes: list
+    language_keys: dict = field(default_factory=dict)   # {lang code: data.prompts key written}
+    missing: dict = field(default_factory=dict)         # {lang code: why it was not attached}
+
+    def language_summary(self, requested: list) -> dict:
+        """Deterministic "every requested language is in the file" summary."""
+        missing = [{"language": lang,
+                    "reason": self.missing.get(lang, "no prompt was generated for this language")}
+                   for lang in requested if lang not in self.language_keys]
+        return {"requested": list(requested), "attached": list(self.language_keys), "missing": missing}
 
 
 def _note(path: str, label: str, status: str, detail: str) -> dict:
@@ -223,16 +232,19 @@ def build_output_flow(flow_json: dict, distillation: FlowDistillation | None, la
     data = out["data"]
     created_prompts = data.get("prompts") is None
     attached_keys = []
+    language_keys, missing = {}, {}
     usable = {lang: text for lang, text in (language_prompts or {}).items()
               if isinstance(text, str) and text.strip() and not text.startswith(GENERATION_FAILED_PREFIX)}
     for lang in language_prompts or {}:
         if lang not in usable:
+            missing[lang] = "generation failed"
             notes.append(_note(f"data.prompts.{language_prompt_key(lang)}", f"{lang} language prompt", "not_attached",
                                "Generation ended in an error state, so nothing was attached for this language."))
 
     if usable and not created_prompts and not isinstance(data.get("prompts"), dict):
         notes.append(_note("data.prompts", "Language prompts", "not_attached",
                            "data.prompts in the input is not an object, so no language prompt was attached."))
+        missing.update({lang: "not attached: data.prompts in the input is not an object" for lang in usable})
         usable = {}
     if usable and created_prompts:
         data["prompts"] = {}
@@ -250,6 +262,8 @@ def build_output_flow(flow_json: dict, distillation: FlowDistillation | None, la
                                f"Generated {lang} prompt attached as data.prompts['{key}']."))
         data["prompts"][key] = text
         attached_keys.append(key)
+        language_keys[lang] = key
 
     return OutputFlow(flow=out, rewritten_paths=rewritten_paths, attached_keys=attached_keys,
-                      created_prompts=created_prompts and bool(attached_keys), notes=notes)
+                      created_prompts=created_prompts and bool(attached_keys), notes=notes,
+                      language_keys=language_keys, missing=missing)
